@@ -2,103 +2,121 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Saját Rádió - GitHub Verzió</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rádió Pro - Hangjelzéssel</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        .box { background: #1e1e1e; padding: 30px; border-radius: 15px; display: inline-block; border: 1px solid #333; width: 90%; max-width: 400px; }
-        .btn { padding: 15px; width: 100%; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; margin: 10px 0; font-weight: bold; }
-        .play { background: #00ff96; color: black; }
-        .stop { background: #ff4b2b; color: white; }
-        input { padding: 12px; width: 90%; border-radius: 5px; border: 1px solid #444; background: #121212; color: white; margin-bottom: 10px; text-align: center; }
-        #unmute-btn { display: none; background: #ff9800; color: black; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #111; padding: 30px; border-radius: 20px; border: 1px solid #00ff96; width: 320px; text-align: center; }
+        .btn { padding: 15px; width: 100%; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin: 10px 0; text-transform: uppercase; }
+        .play { background: #00ff96; color: #000; }
+        .stop { background: #ff4b2b; color: #fff; }
+        #unmute-btn { background: #ff9800; display: none; animation: flash 1s infinite; }
+        @keyframes flash { 50% { opacity: 0.5; } }
+        input { width: 90%; padding: 10px; margin-bottom: 10px; background: #222; border: 1px solid #444; color: #fff; text-align: center; }
+        .status { font-size: 12px; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="box">
-    <h1>Rádió Vezérlő</h1>
+<div class="card">
+    <h2 id="title">Rádió Vezérlő</h2>
     
-    <div id="setup">
-        <input type="password" id="pw" placeholder="Jelszó (123)">
-        <button class="btn" style="background: #333; color: white;" onclick="belep('admin')">Belépés Adminként</button>
-        <hr>
-        <button class="btn play" onclick="belep('user')">Csatlakozás Hallgatóként</button>
+    <div id="login-panel">
+        <input type="password" id="pw" placeholder="Admin jelszó (123)">
+        <button class="btn" style="background:#333; color:white;" onclick="init('admin')">BELÉPÉS ADMINKÉNT</button>
+        <hr style="border:0.5px solid #222;">
+        <button class="btn play" onclick="init('user')">CSATLAKOZÁS HALLGATÓKÉNT</button>
     </div>
 
-    <button id="unmute-btn" class="btn" onclick="feloldHang()">⚠️ KATTINTS IDE A HANGHOZ!</button>
+    <button id="unmute-btn" class="btn" onclick="activateAudio()">⚠️ HANG AKTIVÁLÁSA</button>
 
-    <div id="admin-panel" style="display:none;">
-        <h2 style="color:#00ff96;">ADMIN</h2>
-        <button class="btn play" onclick="parancs('play')">INDÍTÁS MINDENKINÉL</button>
-        <button class="btn stop" onclick="parancs('stop')">MEGÁLLÍTÁS</button>
+    <div id="admin-controls" style="display:none;">
+        <button class="btn play" onclick="broadcast('play')">▶ INDÍTÁS MINDENKINÉL</button>
+        <button class="btn stop" onclick="broadcast('stop')">■ STOP MINDENKINÉL</button>
         <p>Hallgatók: <span id="count">0</span></p>
     </div>
 
-    <p id="msg" style="color: #888; font-size: 12px;">Válassz szerepkört...</p>
+    <p id="msg" class="status">Válassz szerepkört...</p>
 </div>
 
-<audio id="audio" loop crossOrigin="anonymous">
-    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
-</audio>
+<audio id="player" loop crossorigin="anonymous"></audio>
 
 <script>
-    const audio = document.getElementById('audio');
-    const msg = document.getElementById('msg');
+    const player = document.getElementById('player');
+    player.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+
     let peer, conns = [];
-    const ID = "FIX-RADIO-ID-2024"; // Ezt használd a csatlakozáshoz
+    const SERVER_ID = "SajatRadio2024Unique";
 
-    function belep(tipus) {
-        if(tipus === 'admin' && document.getElementById('pw').value !== "123") return alert("Rossz jelszó!");
-        document.getElementById('setup').style.display = 'none';
+    // Beszéd szintézis (bemondáshoz)
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance();
+        msg.text = text;
+        msg.lang = 'hu-HU';
+        window.speechSynthesis.speak(msg);
+    }
 
-        peer = new Peer(tipus === 'admin' ? ID : null);
+    // Rövid sípolás (aktiváláshoz)
+    function playBeep() {
+        const context = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = context.createOscillator();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, context.currentTime);
+        osc.connect(context.destination);
+        osc.start();
+        osc.stop(context.currentTime + 0.1);
+    }
 
-        peer.on('open', (myId) => {
-            if(tipus === 'admin') {
-                document.getElementById('admin-panel').style.display = 'block';
-                msg.innerText = "Szerver kész. ID: " + myId;
+    function init(mode) {
+        if(mode === 'admin' && document.getElementById('pw').value !== '123') return alert("Hoppá!");
+        document.getElementById('login-panel').style.display = 'none';
+        document.getElementById('unmute-btn').style.display = 'block';
+
+        peer = new Peer(mode === 'admin' ? SERVER_ID : null);
+        peer.on('open', (id) => {
+            if(mode === 'admin') {
+                document.getElementById('admin-controls').style.display = 'block';
+                document.getElementById('msg').innerText = "Szerver Online!";
             } else {
-                msg.innerText = "Csatlakozás az adminhoz...";
-                const c = peer.connect(ID);
-                setupConn(c);
-                document.getElementById('unmute-btn').style.display = 'block';
+                document.getElementById('msg').innerText = "Kapcsolódás az adóhoz...";
+                const c = peer.connect(SERVER_ID);
+                c.on('open', () => document.getElementById('msg').innerText = "Csatlakozva!");
+                c.on('data', (data) => handleCommand(data));
             }
         });
-
         peer.on('connection', (c) => {
             conns.push(c);
             document.getElementById('count').innerText = conns.length;
-            msg.innerText = "Hallgató csatlakozott!";
-        });
-
-        peer.on('error', (err) => {
-            msg.innerText = "Hiba történt. Frissíts rá!";
-            console.error(err);
         });
     }
 
-    function setupConn(c) {
-        c.on('open', () => msg.innerText = "Sikeres csatlakozás!");
-        c.on('data', (data) => {
-            if(data === 'play') audio.play().catch(() => msg.innerText = "Kattints a narancs gombra!");
-            if(data === 'stop') audio.pause();
-        });
+    function handleCommand(cmd) {
+        if(cmd === 'play') {
+            speak("Adás elindult");
+            setTimeout(() => player.play(), 1500); // Vár egy kicsit, amíg a beszéd véget ér
+        }
+        if(cmd === 'stop') player.pause();
     }
 
-    function parancs(cmd) {
+    function broadcast(cmd) {
         conns.forEach(c => c.send(cmd));
-        cmd === 'play' ? audio.play() : audio.pause();
+        handleCommand(cmd);
     }
 
-    function feloldHang() {
-        audio.play().then(() => {
-            audio.pause();
+    function activateAudio() {
+        // Hangfeloldás kísérlete
+        playBeep(); // Adunk egy sípjelet
+        player.play().then(() => {
+            player.pause();
             document.getElementById('unmute-btn').style.display = 'none';
-            msg.innerText = "Hang engedélyezve. Várj az adminra!";
+            document.getElementById('msg').innerText = "Hang engedélyezve!";
+        }).catch(e => {
+            // Ha még nem engedi, a sípjel akkor is jelzi, hogy interakció történt
+            document.getElementById('unmute-btn').innerText = "KATTINTS ÚJRA!";
         });
     }
 </script>
+
 </body>
-</html>
+</html>a
