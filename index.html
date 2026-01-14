@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suno DJ - Playlist Rendszer</title>
+    <title>Suno DJ Pro - Radio Info</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { background: #0b0b0b; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
         .card { background: #161616; padding: 25px; border-radius: 20px; border: 1px solid #00ff96; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 0 30px rgba(0,255,150,0.15); }
         .btn { padding: 12px; width: 100%; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin: 5px 0; transition: 0.2s; text-transform: uppercase; }
         .play { background: #00ff96; color: #000; }
+        .info-btn { background: #f1c40f; color: #000; } /* Sárga gomb az infónak */
         .stop { background: #ff4b2b; color: #fff; }
-        .save { background: #3498db; color: #fff; }
         #unmute-btn { background: #ff9800; display: none; animation: flash 1.5s infinite; }
         @keyframes flash { 50% { opacity: 0.6; } }
         select, input { width: 100%; padding: 10px; margin-bottom: 8px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; box-sizing: border-box; }
         .admin-box { background: #1f1f1f; padding: 15px; border-radius: 12px; margin-top: 10px; text-align: left; border: 1px solid #333; }
         label { font-size: 11px; color: #00ff96; font-weight: bold; display: block; margin-bottom: 4px; }
-        .playlist-items { max-height: 100px; overflow-y: auto; background: #111; padding: 5px; border-radius: 5px; margin-bottom: 10px; font-size: 12px; text-align: left; border: 1px solid #333; }
         .status { font-size: 13px; color: #888; margin-top: 15px; border-top: 1px solid #333; padding-top: 10px; }
     </style>
 </head>
@@ -37,7 +36,7 @@
 
     <div id="admin-controls" style="display:none;">
         <div class="admin-box">
-            <label>ZENE VÁLASZTÁSA:</label>
+            <label>ZENE VEZÉRLÉS:</label>
             <select id="track-selector">
                 <option value="RANDOM">--- VÉLETLENSZERŰ ---</option>
                 <option value="Black Halo Protocol (1).mp3">Black Halo Protocol (1)</option>
@@ -63,21 +62,9 @@
                 <option value="Velvet Afterglow (1).mp3">Velvet Afterglow (1)</option>
                 <option value="Velvet Afterglow.mp3">Velvet Afterglow</option>
             </select>
-            <button class="btn play" onclick="broadcast('play')">▶ INDÍTÁS MINDENKINÉL</button>
+            <button class="btn play" onclick="broadcast('play')">▶ INDÍTÁS</button>
+            <button class="btn info-btn" onclick="broadcast('info')">📢 INFÓ BEMONDÁS (IDŐ/NÉVNAP)</button>
             <button class="btn stop" onclick="broadcast('stop')">■ STOP</button>
-        </div>
-
-        <div class="admin-box">
-            <label>PLAYLIST KÉSZÍTÉS:</label>
-            <button class="btn" style="background:#444; color:white; font-size:11px;" onclick="addToPlaylist()">+ Dal hozzáadása a listához</button>
-            <div id="playlist-preview" class="playlist-items">A lista üres...</div>
-            <input type="text" id="playlist-name" placeholder="Playlist neve...">
-            <button class="btn save" onclick="savePlaylist()">Mentés</button>
-            <hr style="border:0.5px solid #333;">
-            <label>MENTETT LISTÁK:</label>
-            <select id="saved-playlists-dropdown" onchange="loadPlaylist(this.value)">
-                <option value="">-- Válassz egy listát --</option>
-            </select>
         </div>
         <p style="font-size: 14px;">Hallgatók: <span id="count" style="color:#00ff96;">0</span></p>
     </div>
@@ -90,19 +77,37 @@
 <script>
     const player = document.getElementById('player');
     const trackSelector = document.getElementById('track-selector');
-    const playlistPreview = document.getElementById('playlist-preview');
-    const savedDropdown = document.getElementById('saved-playlists-dropdown');
-    
     let peer, conns = [];
-    let currentPlaylist = [];
-    const SERVER_ID = "Suno-Radio-Playlist-2024"; 
+    const SERVER_ID = "Suno-Radio-Info-2024"; 
 
-    // Inicializáláskor betöltjük a mentett listákat
-    window.onload = updateSavedDropdown;
+    async function getInfoText() {
+        const now = new Date();
+        const idotext = `A pontos idő ${now.getHours()} óra ${now.getMinutes()} perc.`;
+        
+        // Névnap lekérése (ingyenes magyar API)
+        let nevnapText = "";
+        try {
+            const res = await fetch('https://nevnap-api.herokuapp.com/mai');
+            const data = await res.json();
+            nevnapText = `A mai névnap: ${data.nevnapok.join(', ')}.`;
+        } catch(e) { nevnapText = "Szeretettel köszöntjük a mai nap névnapjait."; }
 
-    function speak(text) {
+        // Időjárás lekérése (Open-Meteo API - Budapest alapértelmezett)
+        let weatherText = "";
+        try {
+            const wRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=47.4979&longitude=19.0402&current_weather=true');
+            const wData = await wRes.json();
+            weatherText = `A hőmérséklet Budapesten jelenleg ${Math.round(wData.current_weather.temperature)} fok.`;
+        } catch(e) { weatherText = "Kellemes időt kívánunk a zenehallgatáshoz."; }
+
+        return `${idotext} ${weatherText} ${nevnapText}`;
+    }
+
+    function speak(text, callback) {
         const msg = new SpeechSynthesisUtterance(text);
         msg.lang = 'hu-HU';
+        msg.rate = 0.9;
+        msg.onend = callback;
         window.speechSynthesis.speak(msg);
     }
 
@@ -113,9 +118,11 @@
 
         peer = new Peer(mode === 'admin' ? SERVER_ID : null);
         peer.on('open', () => {
-            document.getElementById('msg').innerText = mode === 'admin' ? "Adásvezérlő online." : "Csatlakozva.";
             if(mode === 'admin') document.getElementById('admin-controls').style.display = 'block';
-            else connectToAdmin();
+            else {
+                const c = peer.connect(SERVER_ID);
+                c.on('data', data => handleCommand(data));
+            }
         });
         peer.on('connection', c => {
             conns.push(c);
@@ -123,74 +130,36 @@
         });
     }
 
-    function connectToAdmin() {
-        const c = peer.connect(SERVER_ID);
-        c.on('data', data => handleCommand(data));
-    }
-
-    function handleCommand(data) {
+    async function handleCommand(data) {
         if(data.cmd === 'play') {
-            const cleanName = data.file.replace('.mp3', '').replace(/\(\d+\)/, '');
-            speak("Következő dal: " + cleanName);
             player.src = data.file;
-            setTimeout(() => player.play(), 2000);
-            document.getElementById('msg').innerText = "Most szól: " + cleanName;
+            player.volume = 1;
+            player.play();
         }
-        if(data.cmd === 'stop') { player.pause(); document.getElementById('msg').innerText = "Megállítva."; }
+        if(data.cmd === 'stop') { player.pause(); }
+        
+        if(data.cmd === 'info') {
+            // 1. Lehalkítás
+            const originalVol = player.volume;
+            player.volume = 0.2;
+            
+            // 2. Szöveg összeállítása és bemondása
+            const text = await getInfoText();
+            speak(text, () => {
+                // 3. Visszahangosítás
+                player.volume = originalVol;
+            });
+        }
     }
 
     function broadcast(cmd) {
-        let file = trackSelector.value;
-        if(file === "RANDOM") {
-            const opts = Array.from(trackSelector.options).filter(o => o.value !== "RANDOM");
-            file = opts[Math.floor(Math.random() * opts.length)].value;
-        }
+        const file = trackSelector.value === "RANDOM" ? 
+            trackSelector.options[Math.floor(Math.random() * (trackSelector.options.length-1)) + 1].value : 
+            trackSelector.value;
+            
         const payload = { cmd: cmd, file: file };
         conns.forEach(c => c.send(payload));
         handleCommand(payload);
-    }
-
-    // --- PLAYLIST FUNKCIÓK ---
-    function addToPlaylist() {
-        const val = trackSelector.value;
-        if(val === "RANDOM") return;
-        currentPlaylist.push(val);
-        playlistPreview.innerText = currentPlaylist.join("\n");
-    }
-
-    function savePlaylist() {
-        const name = document.getElementById('playlist-name').value;
-        if(!name || currentPlaylist.length === 0) return alert("Adj nevet és válassz dalokat!");
-        
-        let playlists = JSON.parse(localStorage.getItem('myRadioPlaylists') || '{}');
-        playlists[name] = currentPlaylist;
-        localStorage.setItem('myRadioPlaylists', JSON.stringify(playlists));
-        
-        alert("Lista mentve: " + name);
-        currentPlaylist = [];
-        playlistPreview.innerText = "A lista üres...";
-        document.getElementById('playlist-name').value = "";
-        updateSavedDropdown();
-    }
-
-    function updateSavedDropdown() {
-        let playlists = JSON.parse(localStorage.getItem('myRadioPlaylists') || '{}');
-        savedDropdown.innerHTML = '<option value="">-- Válassz egy listát --</option>';
-        for(let name in playlists) {
-            let opt = document.createElement('option');
-            opt.value = name;
-            opt.innerText = name;
-            savedDropdown.appendChild(opt);
-        }
-    }
-
-    function loadPlaylist(name) {
-        if(!name) return;
-        let playlists = JSON.parse(localStorage.getItem('myRadioPlaylists') || '{}');
-        currentPlaylist = playlists[name];
-        playlistPreview.innerText = currentPlaylist.join("\n");
-        // Itt beállíthatjuk, hogy a selector az első dalra ugorjon
-        if(currentPlaylist.length > 0) trackSelector.value = currentPlaylist[0];
     }
 
     function activateAudio() {
