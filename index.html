@@ -3,32 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suno Műsorvezető Pro</title>
+    <title>Suno DJ - Playlist Rendszer</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { background: #0b0b0b; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: #161616; padding: 25px; border-radius: 20px; border: 1px solid #00ff96; width: 380px; text-align: center; box-shadow: 0 0 30px rgba(0,255,150,0.15); }
-        .btn { padding: 12px; width: 100%; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin: 8px 0; transition: 0.2s; text-transform: uppercase; }
+        body { background: #0b0b0b; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { background: #161616; padding: 25px; border-radius: 20px; border: 1px solid #00ff96; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 0 30px rgba(0,255,150,0.15); }
+        .btn { padding: 12px; width: 100%; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin: 5px 0; transition: 0.2s; text-transform: uppercase; }
         .play { background: #00ff96; color: #000; }
         .stop { background: #ff4b2b; color: #fff; }
+        .save { background: #3498db; color: #fff; }
         #unmute-btn { background: #ff9800; display: none; animation: flash 1.5s infinite; }
         @keyframes flash { 50% { opacity: 0.6; } }
-        select, input { width: 100%; padding: 12px; margin-bottom: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        select, input { width: 100%; padding: 10px; margin-bottom: 8px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; box-sizing: border-box; }
+        .admin-box { background: #1f1f1f; padding: 15px; border-radius: 12px; margin-top: 10px; text-align: left; border: 1px solid #333; }
+        label { font-size: 11px; color: #00ff96; font-weight: bold; display: block; margin-bottom: 4px; }
+        .playlist-items { max-height: 100px; overflow-y: auto; background: #111; padding: 5px; border-radius: 5px; margin-bottom: 10px; font-size: 12px; text-align: left; border: 1px solid #333; }
         .status { font-size: 13px; color: #888; margin-top: 15px; border-top: 1px solid #333; padding-top: 10px; }
-        .admin-box { background: #1f1f1f; padding: 15px; border-radius: 12px; margin-top: 10px; text-align: left; }
-        label { font-size: 12px; color: #00ff96; font-weight: bold; margin-bottom: 5px; display: block; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 id="title" style="margin-top:0;">Rádió Központ</h2>
+    <h2 id="title" style="margin:0 0 15px 0;">Suno DJ Pro</h2>
     
     <div id="login-panel">
         <input type="password" id="pw" placeholder="Admin jelszó (123)">
-        <button class="btn" style="background:#333; color:white;" onclick="init('admin')">BELÉPÉS ADMINKÉNT</button>
+        <button class="btn" style="background:#333; color:white;" onclick="init('admin')">Admin Belépés</button>
         <hr style="border:0.5px solid #333; margin: 15px 0;">
-        <button class="btn play" onclick="init('user')">CSATLAKOZÁS HALLGATÓKÉNT</button>
+        <button class="btn play" onclick="init('user')">Hallgatói Csatlakozás</button>
     </div>
 
     <button id="unmute-btn" class="btn" onclick="activateAudio()">⚠️ HANG AKTIVÁLÁSA</button>
@@ -64,10 +66,23 @@
             <button class="btn play" onclick="broadcast('play')">▶ INDÍTÁS MINDENKINÉL</button>
             <button class="btn stop" onclick="broadcast('stop')">■ STOP</button>
         </div>
-        <p style="font-size: 14px;">Aktív hallgatók: <span id="count" style="color:#00ff96;">0</span></p>
+
+        <div class="admin-box">
+            <label>PLAYLIST KÉSZÍTÉS:</label>
+            <button class="btn" style="background:#444; color:white; font-size:11px;" onclick="addToPlaylist()">+ Dal hozzáadása a listához</button>
+            <div id="playlist-preview" class="playlist-items">A lista üres...</div>
+            <input type="text" id="playlist-name" placeholder="Playlist neve...">
+            <button class="btn save" onclick="savePlaylist()">Mentés</button>
+            <hr style="border:0.5px solid #333;">
+            <label>MENTETT LISTÁK:</label>
+            <select id="saved-playlists-dropdown" onchange="loadPlaylist(this.value)">
+                <option value="">-- Válassz egy listát --</option>
+            </select>
+        </div>
+        <p style="font-size: 14px;">Hallgatók: <span id="count" style="color:#00ff96;">0</span></p>
     </div>
 
-    <p id="msg" class="status">Készenlét...</p>
+    <p id="msg" class="status">Várakozás...</p>
 </div>
 
 <audio id="player" crossorigin="anonymous"></audio>
@@ -75,8 +90,15 @@
 <script>
     const player = document.getElementById('player');
     const trackSelector = document.getElementById('track-selector');
+    const playlistPreview = document.getElementById('playlist-preview');
+    const savedDropdown = document.getElementById('saved-playlists-dropdown');
+    
     let peer, conns = [];
-    const SERVER_ID = "Sajat-Suno-Radio-2024-v2"; 
+    let currentPlaylist = [];
+    const SERVER_ID = "Suno-Radio-Playlist-2024"; 
+
+    // Inicializáláskor betöltjük a mentett listákat
+    window.onload = updateSavedDropdown;
 
     function speak(text) {
         const msg = new SpeechSynthesisUtterance(text);
@@ -90,23 +112,20 @@
         document.getElementById('unmute-btn').style.display = 'block';
 
         peer = new Peer(mode === 'admin' ? SERVER_ID : null);
-        
         peer.on('open', () => {
-            if(mode === 'admin') {
-                document.getElementById('admin-controls').style.display = 'block';
-                document.getElementById('msg').innerText = "Adásvezérlő aktív.";
-            } else {
-                document.getElementById('msg').innerText = "Csatlakozás...";
-                const c = peer.connect(SERVER_ID);
-                c.on('open', () => document.getElementById('msg').innerText = "Kapcsolódva az adóhoz!");
-                c.on('data', (data) => handleCommand(data));
-            }
+            document.getElementById('msg').innerText = mode === 'admin' ? "Adásvezérlő online." : "Csatlakozva.";
+            if(mode === 'admin') document.getElementById('admin-controls').style.display = 'block';
+            else connectToAdmin();
         });
-
-        peer.on('connection', (c) => {
+        peer.on('connection', c => {
             conns.push(c);
             document.getElementById('count').innerText = conns.length;
         });
+    }
+
+    function connectToAdmin() {
+        const c = peer.connect(SERVER_ID);
+        c.on('data', data => handleCommand(data));
     }
 
     function handleCommand(data) {
@@ -117,30 +136,68 @@
             setTimeout(() => player.play(), 2000);
             document.getElementById('msg').innerText = "Most szól: " + cleanName;
         }
-        if(data.cmd === 'stop') {
-            player.pause();
-            document.getElementById('msg').innerText = "Adás megállítva.";
-        }
+        if(data.cmd === 'stop') { player.pause(); document.getElementById('msg').innerText = "Megállítva."; }
     }
 
     function broadcast(cmd) {
-        let selectedFile = trackSelector.value;
-        if(selectedFile === "RANDOM") {
-            const options = Array.from(trackSelector.options).filter(o => o.value !== "RANDOM");
-            selectedFile = options[Math.floor(Math.random() * options.length)].value;
+        let file = trackSelector.value;
+        if(file === "RANDOM") {
+            const opts = Array.from(trackSelector.options).filter(o => o.value !== "RANDOM");
+            file = opts[Math.floor(Math.random() * opts.length)].value;
         }
-
-        const payload = { cmd: cmd, file: selectedFile };
+        const payload = { cmd: cmd, file: file };
         conns.forEach(c => c.send(payload));
         handleCommand(payload);
+    }
+
+    // --- PLAYLIST FUNKCIÓK ---
+    function addToPlaylist() {
+        const val = trackSelector.value;
+        if(val === "RANDOM") return;
+        currentPlaylist.push(val);
+        playlistPreview.innerText = currentPlaylist.join("\n");
+    }
+
+    function savePlaylist() {
+        const name = document.getElementById('playlist-name').value;
+        if(!name || currentPlaylist.length === 0) return alert("Adj nevet és válassz dalokat!");
+        
+        let playlists = JSON.parse(localStorage.getItem('myRadioPlaylists') || '{}');
+        playlists[name] = currentPlaylist;
+        localStorage.setItem('myRadioPlaylists', JSON.stringify(playlists));
+        
+        alert("Lista mentve: " + name);
+        currentPlaylist = [];
+        playlistPreview.innerText = "A lista üres...";
+        document.getElementById('playlist-name').value = "";
+        updateSavedDropdown();
+    }
+
+    function updateSavedDropdown() {
+        let playlists = JSON.parse(localStorage.getItem('myRadioPlaylists') || '{}');
+        savedDropdown.innerHTML = '<option value="">-- Válassz egy listát --</option>';
+        for(let name in playlists) {
+            let opt = document.createElement('option');
+            opt.value = name;
+            opt.innerText = name;
+            savedDropdown.appendChild(opt);
+        }
+    }
+
+    function loadPlaylist(name) {
+        if(!name) return;
+        let playlists = JSON.parse(localStorage.getItem('myRadioPlaylists') || '{}');
+        currentPlaylist = playlists[name];
+        playlistPreview.innerText = currentPlaylist.join("\n");
+        // Itt beállíthatjuk, hogy a selector az első dalra ugorjon
+        if(currentPlaylist.length > 0) trackSelector.value = currentPlaylist[0];
     }
 
     function activateAudio() {
         player.play().then(() => {
             player.pause();
             document.getElementById('unmute-btn').style.display = 'none';
-            document.getElementById('msg').innerText = "Hang aktív!";
-        }).catch(e => console.log("Interakció szükséges"));
+        });
     }
 </script>
 
