@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suno DJ Pro - Automata Rádió</title>
+    <title>Suno DJ Pro - Professzionális Automata</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { background: #0b0b0b; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
@@ -93,11 +93,12 @@
     let peer, conns = [];
     let currentPlaylist = [];
     let isAdmin = false;
+    let currentTrack = "";
     const SERVER_ID = "Suno-Automata-Radio-2024-Final"; 
 
     window.onload = updateSavedDropdown;
 
-    // --- AUTOMATA IDŐZÍTŐ (Csak Adminnál fut) ---
+    // AUTOMATA IDŐZÍTŐ
     setInterval(() => {
         if (!isAdmin) return;
         const now = new Date();
@@ -106,39 +107,38 @@
         const h = now.getHours();
 
         if (s === 0) {
-            // Névnap: 7:00 és 17:00
-            if (m === 0 && (h === 7 || h === 17)) {
-                broadcast('full_info');
-            } 
-            // Időjárás minden 30 percben (:00, :30)
-            else if (m === 0 || m === 30) {
-                broadcast('weather_info');
-            }
-            // Óra minden 15 percben (:15, :45)
-            else if (m === 15 || m === 45) {
-                broadcast('time_info');
-            }
+            if (m === 0 && (h === 7 || h === 17)) broadcast('full_info');
+            else if (m === 0 || m === 30) broadcast('full_info'); // Mostantól a 30 perces is teljes infó a jobb élményért
+            else if (m === 15 || m === 45) broadcast('time_info');
         }
     }, 1000);
 
     async function getFullReport() {
         const now = new Date();
-        let text = `Üdvözöljük a hallgatókat! A pontos idő ${now.getHours()} óra ${now.getMinutes()} perc. `;
+        let text = `Üdvözlöm a kedves hallgatókat, ez itt a Suno DJ Pro! A pontos időnk jelenleg ${now.getHours()} óra ${now.getMinutes()} perc. `;
         
         // Névnap
         try {
-            const r = await fetch('https://api.nevenapja.hu/mai'); // Alternatív névnap API
+            const r = await fetch('https://api.nevenapja.hu/mai');
             const d = await r.json();
-            text += `A mai napon ${d.nevnapok.join(' és ')} nevű hallgatóinkat köszöntjük nagyon sok szeretettel! `;
-        } catch(e) { text += "Szeretettel köszöntjük a mai nap névnapjait! "; }
+            text += `Külön köszöntöm ${d.nevnapok.join(' és ')} nevű hallgatóinkat, minden jót nekik a névnapjuk alkalmából! `;
+        } catch(e) { text += "Nagyon sok boldogságot kívánunk a mai nap névnapjait ünneplőknek! "; }
 
-        // Heti Időjárás
+        // Időjárás (Dinamikus csapadék figyeléssel)
         try {
-            const w = await fetch('https://api.open-meteo.com/v1/forecast?latitude=47.4979&longitude=19.0402&daily=temperature_2m_max,temperature_2m_min&current_weather=true&timezone=auto');
+            const w = await fetch('https://api.open-meteo.com/v1/forecast?latitude=47.4979&longitude=19.0402&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum&current_weather=true&timezone=auto');
             const wd = await w.json();
-            text += `Nézzük az időjárást! Jelenleg ${Math.round(wd.current_weather.temperature)} fok van Budapesten. `;
-            text += `A hét további részében: Holnap ${Math.round(wd.daily.temperature_2m_max[1])} fokra számíthatunk. A hétvégén a hőmérséklet ${Math.round(wd.daily.temperature_2m_min[4])} és ${Math.round(wd.daily.temperature_2m_max[4])} fok között alakul majd. Kellemes időtöltést! `;
-        } catch(e) { text += "Az időjárás továbbra is kedvező a zenehallgatáshoz. "; }
+            const rain = wd.daily.precipitation_sum[0];
+            const snow = wd.daily.snowfall_sum[0];
+
+            text += `Lássuk, mi újság kint! Jelenleg ${Math.round(wd.current_weather.temperature)} fokot mérhetünk. `;
+            
+            if (snow > 0) text += `Figyelem! Havazás várható, készüljenek a hólapátok, és mindenki vigyázzon az utakon! Jó hólapátolást mindenkinek! `;
+            else if (rain > 0.5) text += `Sajnos az esernyőket ne hagyják otthon, mert jelentős csapadékra számíthatunk a mai napon. `;
+            else text += `Szerencsére az égiek kegyesek hozzánk, nem várható komolyabb eső vagy hó, élvezzék a napsütést! `;
+
+            text += `A hét további részében: Holnap ${Math.round(wd.daily.temperature_2m_max[1])} fok körül alakul a csúcs. Tartsanak velünk továbbra is! `;
+        } catch(e) { text += "Az időjárás jelentésünk technikai okok miatt rövidült, de a lényeg: maradjanak a zenénél! "; }
 
         return text;
     }
@@ -146,8 +146,8 @@
     function speak(text, callback) {
         const msg = new SpeechSynthesisUtterance(text);
         msg.lang = 'hu-HU';
-        msg.rate = 1.05; // Kicsit gyorsabb, lelkesebb
-        msg.pitch = 1.1; // Kicsit magasabb, élethűbb
+        msg.rate = 1.05;
+        msg.pitch = 1.1;
         msg.onend = callback;
         window.speechSynthesis.speak(msg);
     }
@@ -160,25 +160,39 @@
 
         peer = new Peer(isAdmin ? SERVER_ID : null);
         peer.on('open', () => {
-            document.getElementById('msg').innerText = isAdmin ? "Szerver aktív." : "Csatlakozva.";
+            document.getElementById('msg').innerText = isAdmin ? "Adásvezérlő online." : "Csatlakozva.";
             if(isAdmin) document.getElementById('admin-controls').style.display = 'block';
-            else {
-                const c = peer.connect(SERVER_ID);
-                c.on('data', data => handleCommand(data));
-            }
+            else connectToAdmin();
         });
-        peer.on('connection', c => conns.push(c));
+        peer.on('connection', c => {
+            conns.push(c);
+            // Ha van éppen futó zene, elküldjük az új csatlakozónak
+            if(currentTrack) c.send({ cmd: 'play', file: currentTrack });
+        });
+    }
+
+    function connectToAdmin() {
+        const c = peer.connect(SERVER_ID);
+        c.on('data', data => handleCommand(data));
+        c.on('open', () => {
+            // Csatlakozáskor jelezzük az adminnak
+            console.log("Kapcsolat létrejött az adminnal.");
+        });
     }
 
     async function handleCommand(data) {
         if(data.cmd === 'play') {
+            currentTrack = data.file;
             player.src = data.file;
             player.volume = 1;
-            player.play();
+            player.play().catch(() => {
+                document.getElementById('msg').innerText = "Kattints a HANG AKTIVÁLÁSA gombra!";
+            });
+            document.getElementById('msg').innerText = "Most szól: " + data.file;
         }
-        if(data.cmd === 'stop') player.pause();
+        if(data.cmd === 'stop') { player.pause(); currentTrack = ""; }
         
-        if(['full_info', 'weather_info', 'time_info'].includes(data.cmd)) {
+        if(['full_info', 'time_info'].includes(data.cmd)) {
             player.volume = 0.2;
             const text = await getFullReport();
             speak(text, () => player.volume = 1);
@@ -186,15 +200,33 @@
     }
 
     function broadcast(cmd) {
-        const file = trackSelector.value === "RANDOM" ? 
-            trackSelector.options[Math.floor(Math.random() * (trackSelector.options.length-1)) + 1].value : 
-            trackSelector.value;
+        let file = trackSelector.value;
+        if(file === "RANDOM") {
+            const opts = Array.from(trackSelector.options).filter(o => o.value !== "RANDOM");
+            file = opts[Math.floor(Math.random() * opts.length)].value;
+        }
+        if(cmd === 'play') currentTrack = file;
         const payload = { cmd: cmd, file: file };
         conns.forEach(c => c.send(payload));
         handleCommand(payload);
     }
 
-    // --- PLAYLIST ---
+    function activateAudio() {
+        player.play().then(() => {
+            player.pause();
+            document.getElementById('unmute-btn').style.display = 'none';
+            document.getElementById('msg').innerText = "Hang engedélyezve! Az adás indul...";
+            // Automatikus indítás: ha már van kijelölt zene, elindítjuk
+            if(currentTrack) {
+                player.src = currentTrack;
+                player.play();
+            }
+        }).catch(e => {
+            alert("Kérlek kattints még egyszer a gombra!");
+        });
+    }
+
+    // PLAYLIST FUNKCIÓK (Változatlanul megmaradtak)
     function addToPlaylist() {
         if(trackSelector.value === "RANDOM") return;
         currentPlaylist.push(trackSelector.value);
@@ -207,7 +239,7 @@
         p[name] = currentPlaylist;
         localStorage.setItem('radioPlaylists', JSON.stringify(p));
         updateSavedDropdown();
-        alert("Mentve!");
+        alert("Lista mentve!");
     }
     function updateSavedDropdown() {
         let p = JSON.parse(localStorage.getItem('radioPlaylists') || '{}');
@@ -221,13 +253,6 @@
         let p = JSON.parse(localStorage.getItem('radioPlaylists') || '{}');
         currentPlaylist = p[n];
         playlistPreview.innerText = currentPlaylist.join("\n");
-    }
-
-    function activateAudio() {
-        player.play().then(() => {
-            player.pause();
-            document.getElementById('unmute-btn').style.display = 'none';
-        });
     }
 </script>
 </body>
