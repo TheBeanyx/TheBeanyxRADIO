@@ -3,70 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saját GitHub Rádió</title>
+    <title>Suno Műsorvezető Pro</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #111; padding: 30px; border-radius: 20px; border: 1px solid #00ff96; width: 320px; text-align: center; box-shadow: 0 0 20px rgba(0,255,150,0.2); }
-        .btn { padding: 15px; width: 100%; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin: 10px 0; text-transform: uppercase; }
+        body { background: #0b0b0b; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #161616; padding: 25px; border-radius: 20px; border: 1px solid #00ff96; width: 380px; text-align: center; box-shadow: 0 0 30px rgba(0,255,150,0.15); }
+        .btn { padding: 12px; width: 100%; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin: 8px 0; transition: 0.2s; text-transform: uppercase; }
         .play { background: #00ff96; color: #000; }
         .stop { background: #ff4b2b; color: #fff; }
         #unmute-btn { background: #ff9800; display: none; animation: flash 1.5s infinite; }
         @keyframes flash { 50% { opacity: 0.6; } }
-        input { width: 90%; padding: 12px; margin-bottom: 10px; background: #222; border: 1px solid #444; color: #fff; text-align: center; border-radius: 5px; }
-        .status { font-size: 13px; color: #888; margin-top: 15px; border-top: 1px solid #222; padding-top: 10px; }
+        select, input { width: 100%; padding: 12px; margin-bottom: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .status { font-size: 13px; color: #888; margin-top: 15px; border-top: 1px solid #333; padding-top: 10px; }
+        .admin-box { background: #1f1f1f; padding: 15px; border-radius: 12px; margin-top: 10px; text-align: left; }
+        label { font-size: 12px; color: #00ff96; font-weight: bold; margin-bottom: 5px; display: block; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 id="title">Rádió Vezérlő</h2>
+    <h2 id="title" style="margin-top:0;">Rádió Központ</h2>
     
     <div id="login-panel">
         <input type="password" id="pw" placeholder="Admin jelszó (123)">
         <button class="btn" style="background:#333; color:white;" onclick="init('admin')">BELÉPÉS ADMINKÉNT</button>
-        <hr style="border:0.5px solid #222; margin: 20px 0;">
+        <hr style="border:0.5px solid #333; margin: 15px 0;">
         <button class="btn play" onclick="init('user')">CSATLAKOZÁS HALLGATÓKÉNT</button>
     </div>
 
     <button id="unmute-btn" class="btn" onclick="activateAudio()">⚠️ HANG AKTIVÁLÁSA</button>
 
     <div id="admin-controls" style="display:none;">
-        <button class="btn play" onclick="broadcast('play')">▶ INDÍTÁS MINDENKINÉL</button>
-        <button class="btn stop" onclick="broadcast('stop')">■ STOP MINDENKINÉL</button>
-        <p style="font-size: 18px;">Hallgatók: <span id="count" style="color:#00ff96;">0</span></p>
+        <div class="admin-box">
+            <label>ZENE VÁLASZTÁSA:</label>
+            <select id="track-selector">
+                <option value="RANDOM">--- VÉLETLENSZERŰ ---</option>
+                <option value="Black Halo Protocol (1).mp3">Black Halo Protocol (1)</option>
+                <option value="Black Halo Protocol (2).mp3">Black Halo Protocol (2)</option>
+                <option value="Demon Season (1).mp3">Demon Season (1)</option>
+                <option value="Demon Season.mp3">Demon Season</option>
+                <option value="Dust On The Sunday Sun (1).mp3">Dust On The Sunday Sun (1)</option>
+                <option value="Dust On The Sunday Sun.mp3">Dust On The Sunday Sun</option>
+                <option value="Fractured Tongues, Broken Amps (1).mp3">Fractured Tongues, Broken Amps (1)</option>
+                <option value="Fractured Tongues, Broken Amps.mp3">Fractured Tongues, Broken Amps</option>
+                <option value="Golden Afternoon Switch (1).mp3">Golden Afternoon Switch (1)</option>
+                <option value="Golden Afternoon Switch.mp3">Golden Afternoon Switch</option>
+                <option value="Halfway To The Horizon (1).mp3">Halfway To The Horizon (1)</option>
+                <option value="Halfway To The Horizon.mp3">Halfway To The Horizon</option>
+                <option value="Rise Like Thunder (1).mp3">Rise Like Thunder (1)</option>
+                <option value="Rise Like Thunder.mp3">Rise Like Thunder</option>
+                <option value="Run The Gauntlet (1).mp3">Run The Gauntlet (1)</option>
+                <option value="Run The Gauntlet.mp3">Run The Gauntlet</option>
+                <option value="Side of the Sun (1).mp3">Side of the Sun (1)</option>
+                <option value="Side of the Sun.mp3">Side of the Sun</option>
+                <option value="Sun On My Sneakers (1).mp3">Sun On My Sneakers (1)</option>
+                <option value="Sun On My Sneakers.mp3">Sun On My Sneakers</option>
+                <option value="Velvet Afterglow (1).mp3">Velvet Afterglow (1)</option>
+                <option value="Velvet Afterglow.mp3">Velvet Afterglow</option>
+            </select>
+            <button class="btn play" onclick="broadcast('play')">▶ INDÍTÁS MINDENKINÉL</button>
+            <button class="btn stop" onclick="broadcast('stop')">■ STOP</button>
+        </div>
+        <p style="font-size: 14px;">Aktív hallgatók: <span id="count" style="color:#00ff96;">0</span></p>
     </div>
 
-    <p id="msg" class="status">Válassz szerepkört...</p>
+    <p id="msg" class="status">Készenlét...</p>
 </div>
 
-<audio id="player" loop crossorigin="anonymous">
-    <source src="Side of the Sun.mp3" type="audio/mpeg">
-</audio>
+<audio id="player" crossorigin="anonymous"></audio>
 
 <script>
     const player = document.getElementById('player');
+    const trackSelector = document.getElementById('track-selector');
     let peer, conns = [];
-    const SERVER_ID = "Radio-Sajat-Unique-ID-2024"; 
+    const SERVER_ID = "Sajat-Suno-Radio-2024-v2"; 
 
     function speak(text) {
-        const msg = new SpeechSynthesisUtterance();
-        msg.text = text;
+        const msg = new SpeechSynthesisUtterance(text);
         msg.lang = 'hu-HU';
         window.speechSynthesis.speak(msg);
     }
 
-    function playBeep() {
-        const context = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = context.createOscillator();
-        osc.connect(context.destination);
-        osc.frequency.value = 800;
-        osc.start();
-        osc.stop(context.currentTime + 0.15);
-    }
-
     function init(mode) {
-        if(mode === 'admin' && document.getElementById('pw').value !== '123') return alert("Hibás jelszó!");
+        if(mode === 'admin' && document.getElementById('pw').value !== '123') return alert("Hiba!");
         document.getElementById('login-panel').style.display = 'none';
         document.getElementById('unmute-btn').style.display = 'block';
 
@@ -75,11 +94,11 @@
         peer.on('open', () => {
             if(mode === 'admin') {
                 document.getElementById('admin-controls').style.display = 'block';
-                document.getElementById('msg').innerText = "Szerver Online! Várjuk a hallgatókat.";
+                document.getElementById('msg').innerText = "Adásvezérlő aktív.";
             } else {
-                document.getElementById('msg').innerText = "Kapcsolódás az adóhoz...";
+                document.getElementById('msg').innerText = "Csatlakozás...";
                 const c = peer.connect(SERVER_ID);
-                c.on('open', () => document.getElementById('msg').innerText = "Sikeres csatlakozás!");
+                c.on('open', () => document.getElementById('msg').innerText = "Kapcsolódva az adóhoz!");
                 c.on('data', (data) => handleCommand(data));
             }
         });
@@ -87,35 +106,41 @@
         peer.on('connection', (c) => {
             conns.push(c);
             document.getElementById('count').innerText = conns.length;
-            document.getElementById('msg').innerText = "Új hallgató érkezett!";
         });
     }
 
-    function handleCommand(cmd) {
-        if(cmd === 'play') {
-            speak("Adás elindult");
-            setTimeout(() => player.play(), 1600);
+    function handleCommand(data) {
+        if(data.cmd === 'play') {
+            const cleanName = data.file.replace('.mp3', '').replace(/\(\d+\)/, '');
+            speak("Következő dal: " + cleanName);
+            player.src = data.file;
+            setTimeout(() => player.play(), 2000);
+            document.getElementById('msg').innerText = "Most szól: " + cleanName;
         }
-        if(cmd === 'stop') {
+        if(data.cmd === 'stop') {
             player.pause();
-            document.getElementById('msg').innerText = "Az adás megállt.";
+            document.getElementById('msg').innerText = "Adás megállítva.";
         }
     }
 
     function broadcast(cmd) {
-        conns.forEach(c => c.send(cmd));
-        handleCommand(cmd);
+        let selectedFile = trackSelector.value;
+        if(selectedFile === "RANDOM") {
+            const options = Array.from(trackSelector.options).filter(o => o.value !== "RANDOM");
+            selectedFile = options[Math.floor(Math.random() * options.length)].value;
+        }
+
+        const payload = { cmd: cmd, file: selectedFile };
+        conns.forEach(c => c.send(payload));
+        handleCommand(payload);
     }
 
     function activateAudio() {
-        playBeep();
         player.play().then(() => {
             player.pause();
             document.getElementById('unmute-btn').style.display = 'none';
-            document.getElementById('msg').innerText = "Hang engedélyezve! Várj az adminra.";
-        }).catch(e => {
-            alert("Kattints még egyszer a gombra a hanghoz!");
-        });
+            document.getElementById('msg').innerText = "Hang aktív!";
+        }).catch(e => console.log("Interakció szükséges"));
     }
 </script>
 
