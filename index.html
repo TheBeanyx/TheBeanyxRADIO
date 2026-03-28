@@ -9,17 +9,17 @@
     
     <style>
         body { background: #0f0f0f; color: #00ff00; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .container { border: 2px solid #00ff00; padding: 40px; background: rgba(0, 255, 0, 0.05); text-align: center; }
-        #trackTitle { font-size: 1.2em; margin-bottom: 30px; color: #fff; }
-        .btn { background: #00ff00; color: #000; border: none; padding: 15px 40px; font-weight: bold; cursor: pointer; }
-        .btn:disabled { background: #333; color: #666; }
+        .container { border: 2px solid #00ff00; padding: 40px; background: rgba(0, 255, 0, 0.05); text-align: center; max-width: 90%; }
+        #trackTitle { font-size: 1.1em; margin-bottom: 30px; color: #fff; min-height: 1.2em; }
+        .btn { background: #00ff00; color: #000; border: none; padding: 15px 40px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h1>THE BEANYX RADIO</h1>
-        <p id="trackTitle">ADÁS BETÖLTÉSE...</p>
+        <p id="trackTitle">RENDSZER KÉSZ...</p>
         <button id="startBtn" class="btn">HALLGATÁS</button>
     </div>
 
@@ -42,8 +42,8 @@
         const title = document.getElementById('trackTitle');
         const btn = document.getElementById('startBtn');
 
-        // A GitHub URL-ed alapja (Cseréld ki a [FELHASZNÁLÓNÉV] és [REPROSITORY] részeket!)
-        const baseUrl = "https://raw.githubusercontent.com/thebeanyx/TheBeanyxRADIO/main/";
+        // --- FONTOS: ÍRD ÁT A FELHASZNÁLÓNEVEDRE! ---
+        const baseUrl = "https://raw.githubusercontent.com/thebeanyx/thebeanyxradio/main/";
 
         const playlist = [
             "Black Halo Protocol (1).mp3", "Black Halo Protocol (2).mp3",
@@ -60,6 +60,7 @@
         ];
 
         async function syncAndPlay() {
+            title.innerText = "SZINKRONIZÁLÁS...";
             const snapshot = await db.ref('radioState/playlistStartedAt').get();
             const startTime = snapshot.val();
             const now = Date.now();
@@ -70,27 +71,37 @@
 
         function findAndPlay(index, elapsed) {
             if (index >= playlist.length) {
-                syncAndPlay(); // Ha végére ért, újraszámol
+                // Ha a végére ért, elölről kezdi a teljes listát
+                syncAndPlay(); 
                 return;
             }
 
+            // Automatikus URL kódolás a szóközök és zárójelek miatt
             let songUrl = baseUrl + encodeURIComponent(playlist[index]);
-            let tempAudio = new Audio(songUrl);
+            let tempAudio = new Audio();
+            tempAudio.src = songUrl;
 
             tempAudio.onloadedmetadata = () => {
                 let duration = tempAudio.duration;
                 if (elapsed < duration) {
                     player.src = songUrl;
                     player.currentTime = elapsed;
-                    player.play();
-                    title.innerText = "MOST SZÓL: " + playlist[index].replace('.mp3', '');
+                    player.play().then(() => {
+                        title.innerText = "MOST SZÓL: " + playlist[index].replace('.mp3', '');
+                    }).catch(err => {
+                        title.innerText = "HIBA: KATTINTS ÚJRA!";
+                    });
+                    
                     player.onended = () => { syncAndPlay(); };
                 } else {
                     findAndPlay(index + 1, elapsed - duration);
                 }
             };
             
-            tempAudio.onerror = () => { findAndPlay(index + 1, elapsed); };
+            tempAudio.onerror = () => {
+                console.error("Nem sikerült betölteni: " + playlist[index]);
+                findAndPlay(index + 1, elapsed); // Átugorja a hibás fájlt
+            };
         }
 
         btn.onclick = () => {
@@ -99,9 +110,9 @@
             btn.innerText = "ÉLŐ ADÁS";
         };
 
-        // ADMIN: resetTime() a konzolba az indításhoz
         window.resetTime = () => {
             db.ref('radioState').set({ playlistStartedAt: Date.now() });
+            alert("Rádió újraindítva!");
             location.reload();
         };
     </script>
