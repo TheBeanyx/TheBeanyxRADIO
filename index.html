@@ -6,16 +6,22 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; text-align: center; padding: 50px; }
-        button { padding: 20px 40px; background: #0f0; border: none; cursor: pointer; font-size: 20px; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .box { border: 2px solid #0f0; padding: 30px; background: #050505; }
+        button { padding: 15px 30px; background: #0f0; color: #000; border: none; font-weight: bold; cursor: pointer; font-size: 1.2rem; }
+        button:hover { background: #fff; }
+        #trackTitle { margin: 20px 0; min-height: 1.5em; color: white; }
     </style>
 </head>
 <body>
 
-    <h1>THE BEANYX RADIO</h1>
-    <p id="trackTitle">Várakozás...</p>
-    <button id="startBtn">START</button>
-    <audio id="player"></audio>
+    <div class="box">
+        <h1>THE BEANYX RADIO</h1>
+        <div id="trackTitle">RENDSZER ONLINE</div>
+        <button id="startBtn">ADÁS HALLGATÁSA</button>
+    </div>
+
+    <audio id="player" preload="auto"></audio>
 
     <script>
         const firebaseConfig = {
@@ -24,8 +30,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        
-        // CSAK A FÁJLNEVEK!
+
         const playlist = [
             "Black Halo Protocol (1).mp3", "Black Halo Protocol (2).mp3",
             "Demon Season (1).mp3", "Demon Season.mp3",
@@ -41,34 +46,60 @@
         ];
 
         const player = document.getElementById('player');
-        
-        async function syncAndPlay() {
-            const snap = await db.ref('radioState/playlistStartedAt').get();
-            const start = snap.val();
-            let elapsed = (Date.now() - start) / 1000;
+        const title = document.getElementById('trackTitle');
+        const btn = document.getElementById('startBtn');
 
-            function playLogic(index, time) {
-                let temp = new Audio(playlist[index]);
-                temp.onloadedmetadata = () => {
-                    if (time < temp.duration) {
-                        player.src = playlist[index];
-                        player.currentTime = time;
-                        player.play();
-                        document.getElementById('trackTitle').innerText = "Most: " + playlist[index];
-                        player.onended = () => syncAndPlay();
-                    } else {
-                        playLogic(index + 1, time - temp.duration);
-                    }
-                };
-            }
-            playLogic(0, elapsed);
+        async function startRadio() {
+            title.innerText = "SZINKRONIZÁLÁS...";
+            const snap = await db.ref('radioState/playlistStartedAt').get();
+            const startTime = snap.val();
+            
+            let totalElapsed = (Date.now() - startTime) / 1000;
+            playCurrent(0, totalElapsed);
         }
 
-        document.getElementById('startBtn').onclick = () => {
-            syncAndPlay();
-            document.getElementById('startBtn').style.display = 'none';
+        function playCurrent(index, elapsed) {
+            if (index >= playlist.length) {
+                // Ha a végére értünk, kezdjük újra a számolást (Loop)
+                startRadio();
+                return;
+            }
+
+            const trackName = playlist[index];
+            player.src = encodeURIComponent(trackName);
+            player.load(); // Kényszerített újratöltés
+
+            // Megvárjuk, amíg a böngésző megmondja, milyen hosszú a fájl
+            player.onloadedmetadata = () => {
+                const duration = player.duration;
+                if (elapsed < duration) {
+                    player.currentTime = elapsed;
+                    player.play().catch(e => {
+                        console.error("Lejátszási hiba:", e);
+                        title.innerText = "KATTINTS MÉG EGYSZER!";
+                    });
+                    title.innerText = "MOST SZÓL: " + trackName;
+                    
+                    player.onended = () => {
+                        playCurrent((index + 1) % playlist.length, 0);
+                    };
+                } else {
+                    playCurrent(index + 1, elapsed - duration);
+                }
+            };
+
+            player.onerror = () => {
+                console.warn("Fájl nem található, ugrom: " + trackName);
+                playCurrent(index + 1, elapsed);
+            };
+        }
+
+        btn.onclick = () => {
+            startRadio();
+            btn.style.display = 'none';
         };
-        
+
+        // ADMIN: resetTime() a konzolba az indításhoz
         window.resetTime = () => {
             db.ref('radioState').set({ playlistStartedAt: Date.now() });
             location.reload();
