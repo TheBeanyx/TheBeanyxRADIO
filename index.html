@@ -2,27 +2,63 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>0-24 Autonóm Rádió</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TheBeanyx Radio 24/7</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 50px; }
-        .player-card { background: #1e1e1e; padding: 30px; border-radius: 20px; display: inline-block; }
-        button { padding: 15px 30px; background: #1db954; border: none; color: white; border-radius: 25px; cursor: pointer; font-weight: bold; }
+        body { 
+            background: #0f0f0f; 
+            color: #00ff00; 
+            font-family: 'Courier New', monospace; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container {
+            border: 2px solid #00ff00;
+            padding: 40px;
+            background: rgba(0, 255, 0, 0.05);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            text-align: center;
+            max-width: 80%;
+        }
+        h1 { font-size: 2.5em; margin-bottom: 10px; letter-spacing: 5px; }
+        #trackTitle { font-size: 1.2em; margin-bottom: 30px; color: #fff; }
+        .btn {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+        .btn:hover { background: #fff; box-shadow: 0 0 15px #fff; }
+        .btn:disabled { background: #333; color: #666; cursor: default; box-shadow: none; }
+        #status { margin-top: 15px; font-size: 0.8em; opacity: 0.6; }
     </style>
 </head>
 <body>
 
-    <div class="player-card">
-        <h1>Élő Adás</h1>
-        <p id="trackTitle">Betöltés...</p>
-        <button id="playBtn">Hallgatás</button>
+    <div class="container">
+        <h1>THE BEANYX RADIO</h1>
+        <p id="trackTitle">BECSATLAKOZÁSRA VÁR...</p>
+        <button id="startBtn" class="btn">HALLGATÁS</button>
+        <p id="status">0-24 AUTONÓM ADÁS</p>
     </div>
 
-    <audio id="audioPlayer"></audio>
+    <audio id="player" preload="auto"></audio>
 
     <script>
-        // A TE CONFIGOD
+        // --- FIREBASE KONFIGURÁCIÓ ---
         const firebaseConfig = {
             apiKey: "AIzaSyBLZVnNY-HdYw7vpSfF6ewJHLru2l6e9WE",
             authDomain: "thebeanyxradio.firebaseapp.com",
@@ -35,75 +71,85 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const player = document.getElementById('audioPlayer');
-        const btn = document.getElementById('playBtn');
-        const titleDisplay = document.getElementById('trackTitle');
+        const player = document.getElementById('player');
+        const title = document.getElementById('trackTitle');
+        const btn = document.getElementById('startBtn');
 
-        // IDE TEDD A ZENÉIDET (A sorrend fontos!)
+        // --- LEJÁTSZÁSI LISTA ---
+        // Ide másold a saját .mp3 linkjeidet!
         const playlist = [
-            "https://valami.com/zene1.mp3",
-            "https://valami.com/zene2.mp3"
+            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
         ];
 
-        async function syncRadio() {
-            // 1. Lekérjük az adatbázisból, mikor indult el a rádió örökre
+        async function syncAndPlay() {
+            title.innerText = "SZINKRONIZÁLÁS...";
+            
+            // 1. Lekérjük az indulási időt a Firebase-ből
             const snapshot = await db.ref('radioState/playlistStartedAt').get();
             const startTime = snapshot.val();
             
             const now = Date.now();
-            let totalElapsed = (now - startTime) / 1000; // Eltelt másodpercek az indulás óta
+            let totalElapsedSeconds = (now - startTime) / 1000;
 
-            // 2. Kiszámoljuk a dalt (ez a rész megméri a dalt és ugrik)
-            playAtCurrentTime(totalElapsed);
+            // 2. Kiszámoljuk, melyik dal szól most
+            findAndPlay(0, totalElapsedSeconds);
         }
 
-        function playAtCurrentTime(totalElapsed) {
-            let currentTrackIndex = 0;
-            
-            function tryNext(index, elapsed) {
-                if (index >= playlist.length) {
-                    // Ha a lista végére értünk, kezdjük elölről a ciklust
-                    playAtCurrentTime(elapsed); 
-                    return;
-                }
-
-                const tempAudio = new Audio(playlist[index]);
-                tempAudio.onloadedmetadata = () => {
-                    const duration = tempAudio.duration;
-                    
-                    if (elapsed < duration) {
-                        // EZ A DAL SZÓL MOST!
-                        player.src = playlist[index];
-                        player.currentTime = elapsed;
-                        player.play();
-                        titleDisplay.innerText = "Most szól: " + playlist[index].split('/').pop();
-                        
-                        // Ha vége, jön a következő
-                        player.onended = () => {
-                            syncRadio();
-                        };
-                    } else {
-                        // Már lement ez a dal, nézzük a következőt
-                        tryNext(index + 1, elapsed - duration);
-                    }
-                };
+        function findAndPlay(index, elapsed) {
+            // Ha a lista végére értünk, újrakezdjük az elejéről (Loop)
+            if (index >= playlist.length) {
+                // Kiszámoljuk az összesített időt a ciklushoz, hogy ne legyen ugrás
+                syncAndPlay(); 
+                return;
             }
+
+            let tempAudio = new Audio(playlist[index]);
+            tempAudio.onloadedmetadata = () => {
+                let duration = tempAudio.duration;
+
+                if (elapsed < duration) {
+                    // EZ A DAL SZÓL MOST
+                    player.src = playlist[index];
+                    player.currentTime = elapsed; // Oda ugrunk, ahol a világ tart
+                    player.play().catch(e => {
+                        title.innerText = "HIBA: KATTINTS A HALLGATÁSRA!";
+                    });
+                    
+                    title.innerText = "MOST SZÓL: " + decodeURIComponent(playlist[index].split('/').pop());
+                    
+                    // Ha vége a dalnak, jön a következő szinkron
+                    player.onended = () => {
+                        syncAndPlay();
+                    };
+                } else {
+                    // Ez a dal már lement, nézzük a következőt a listában
+                    findAndPlay(index + 1, elapsed - duration);
+                }
+            };
             
-            tryNext(0, totalElapsed);
+            // Hibakezelés, ha nem tölthető be a fájl
+            tempAudio.onerror = () => {
+                console.error("Hiba a fájl betöltésekor: " + playlist[index]);
+                findAndPlay(index + 1, elapsed);
+            };
         }
 
-        btn.addEventListener('click', () => {
-            syncRadio();
-            btn.style.display = 'none';
-        });
+        btn.onclick = () => {
+            syncAndPlay();
+            btn.innerText = "ÉLŐ ADÁS";
+            btn.disabled = true;
+        };
 
-        // ADMIN FUNKCIÓ: Ezt csak egyszer kell lefuttatnod a konzolban, 
-        // hogy rögzítsd a "Világ kezdetét" a rádiónak.
-        function resetRadioTime() {
-            db.ref('radioState').set({
-                playlistStartedAt: Date.now()
-            });
-        }
+        // ADMIN FUNKCIÓ: Ha frissíteni akarod a kezdőidőt a mostani pillanatra
+        window.resetTime = () => {
+            const now = Date.now();
+            db.ref('radioState').set({ playlistStartedAt: now });
+            console.log("Idő szinkronizálva: " + now);
+            alert("Rádió újraindítva a jelenlegi időponttól!");
+            location.reload();
+        };
     </script>
 </body>
 </html>
