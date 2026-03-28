@@ -2,29 +2,71 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Webrádió</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Szervermentes Webrádió</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding-top: 50px; }
+        #status { color: #888; margin-bottom: 20px; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #1db954; border: none; color: white; border-radius: 25px; }
+    </style>
 </head>
 <body>
-    <h1>Élő Webrádió</h1>
-    <audio id="radio" controls autoplay></audio>
+
+    <h1>Élő Közös Rádió</h1>
+    <p id="status">Kattints a lejátszáshoz a szinkronizáláshoz!</p>
+    <button id="playBtn">Hallgatás</button>
+    
+    <audio id="audioPlayer"></audio>
 
     <script>
+        // IDE ÍRD A ZENÉIDET ÉS A HOSSZUKAT MÁSODPERCBEN!
         const playlist = [
-            "https://pelda.hu/zene1.mp3",
-            "https://pelda.hu/zene2.mp3"
+            { src: "https://www.kozoshonlap.hu/zene1.mp3", duration: 185 },
+            { src: "https://www.kozoshonlap.hu/zene2.mp3", duration: 210 },
+            { src: "https://www.kozoshonlap.hu/zene3.mp3", duration: 145 }
         ];
-        
-        let index = 0;
-        const player = document.getElementById('radio');
 
-        function playNext() {
-            player.src = playlist[index];
-            player.play();
-            index = (index + 1) % playlist.length;
+        const fullCycle = playlist.reduce((acc, track) => acc + track.duration, 0);
+        const player = document.getElementById('audioPlayer');
+        const btn = document.getElementById('playBtn');
+
+        function syncAndPlay() {
+            // Jelenlegi idő lekérése másodpercben a nap kezdete óta
+            const now = new Date();
+            const secondsSinceMidnight = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+            
+            // Megnézzük, hol tartunk a teljes ciklusban
+            let currentTimeInCycle = secondsSinceMidnight % fullCycle;
+            
+            let accumulatedTime = 0;
+            let trackIndex = 0;
+            let seekTime = 0;
+
+            // Kikeressük, melyik dal szól most
+            for (let i = 0; i < playlist.length; i++) {
+                if (currentTimeInCycle < accumulatedTime + playlist[i].duration) {
+                    trackIndex = i;
+                    seekTime = currentTimeInCycle - accumulatedTime;
+                    break;
+                }
+                accumulatedTime += playlist[i].duration;
+            }
+
+            // Betöltés és ugrás a pontos időre
+            player.src = playlist[trackIndex].src;
+            player.currentTime = seekTime;
+            player.play().catch(e => console.log("A böngésző blokkolta az automatikus lejátszást."));
+            
+            document.getElementById('status').innerText = "Most szól: " + playlist[trackIndex].src.split('/').pop();
         }
 
-        player.onended = playNext;
-        playNext();
+        btn.addEventListener('click', () => {
+            syncAndPlay();
+            btn.innerText = "Szinkronizálva";
+        });
+
+        // Ha vége egy dalnak, újra szinkronizál (így mindenki együtt marad)
+        player.onended = syncAndPlay;
     </script>
 </body>
 </html>
