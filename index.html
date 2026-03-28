@@ -2,49 +2,30 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TheBeanyx Radio 24/7</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    
     <style>
-        body { background: #0f0f0f; color: #00ff00; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .container { border: 2px solid #00ff00; padding: 40px; background: rgba(0, 255, 0, 0.05); text-align: center; max-width: 90%; }
-        #trackTitle { font-size: 1.1em; margin-bottom: 30px; color: #fff; min-height: 1.2em; }
-        .btn { background: #00ff00; color: #000; border: none; padding: 15px 40px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+        body { background: #000; color: #0f0; font-family: monospace; text-align: center; padding: 50px; }
+        button { padding: 20px 40px; background: #0f0; border: none; cursor: pointer; font-size: 20px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>THE BEANYX RADIO</h1>
-        <p id="trackTitle">RENDSZER KÉSZ...</p>
-        <button id="startBtn" class="btn">HALLGATÁS</button>
-    </div>
-
+    <h1>THE BEANYX RADIO</h1>
+    <p id="trackTitle">Várakozás...</p>
+    <button id="startBtn">START</button>
     <audio id="player"></audio>
 
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBLZVnNY-HdYw7vpSfF6ewJHLru2l6e9WE",
-            authDomain: "thebeanyxradio.firebaseapp.com",
-            databaseURL: "https://thebeanyxradio-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "thebeanyxradio",
-            storageBucket: "thebeanyxradio.firebasestorage.app",
-            messagingSenderId: "492055957952",
-            appId: "1:492055957952:web:5eece9153e7caf35df7825"
+            databaseURL: "https://thebeanyxradio-default-rtdb.europe-west1.firebasedatabase.app"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const player = document.getElementById('player');
-        const title = document.getElementById('trackTitle');
-        const btn = document.getElementById('startBtn');
-
-        // --- FONTOS: ÍRD ÁT A FELHASZNÁLÓNEVEDRE! ---
-        const baseUrl = "https://raw.githubusercontent.com/thebeanyx/thebeanyxradio/";
-
+        
+        // CSAK A FÁJLNEVEK!
         const playlist = [
             "Black Halo Protocol (1).mp3", "Black Halo Protocol (2).mp3",
             "Demon Season (1).mp3", "Demon Season.mp3",
@@ -59,60 +40,37 @@
             "Velvet Afterglow (1).mp3", "Velvet Afterglow.mp3"
         ];
 
+        const player = document.getElementById('player');
+        
         async function syncAndPlay() {
-            title.innerText = "SZINKRONIZÁLÁS...";
-            const snapshot = await db.ref('radioState/playlistStartedAt').get();
-            const startTime = snapshot.val();
-            const now = Date.now();
-            let totalElapsedSeconds = (now - startTime) / 1000;
+            const snap = await db.ref('radioState/playlistStartedAt').get();
+            const start = snap.val();
+            let elapsed = (Date.now() - start) / 1000;
 
-            findAndPlay(0, totalElapsedSeconds);
-        }
-
-        function findAndPlay(index, elapsed) {
-            if (index >= playlist.length) {
-                // Ha a végére ért, elölről kezdi a teljes listát
-                syncAndPlay(); 
-                return;
+            function playLogic(index, time) {
+                let temp = new Audio(playlist[index]);
+                temp.onloadedmetadata = () => {
+                    if (time < temp.duration) {
+                        player.src = playlist[index];
+                        player.currentTime = time;
+                        player.play();
+                        document.getElementById('trackTitle').innerText = "Most: " + playlist[index];
+                        player.onended = () => syncAndPlay();
+                    } else {
+                        playLogic(index + 1, time - temp.duration);
+                    }
+                };
             }
-
-            // Automatikus URL kódolás a szóközök és zárójelek miatt
-            let songUrl = baseUrl + encodeURIComponent(playlist[index]);
-            let tempAudio = new Audio();
-            tempAudio.src = songUrl;
-
-            tempAudio.onloadedmetadata = () => {
-                let duration = tempAudio.duration;
-                if (elapsed < duration) {
-                    player.src = songUrl;
-                    player.currentTime = elapsed;
-                    player.play().then(() => {
-                        title.innerText = "MOST SZÓL: " + playlist[index].replace('.mp3', '');
-                    }).catch(err => {
-                        title.innerText = "HIBA: KATTINTS ÚJRA!";
-                    });
-                    
-                    player.onended = () => { syncAndPlay(); };
-                } else {
-                    findAndPlay(index + 1, elapsed - duration);
-                }
-            };
-            
-            tempAudio.onerror = () => {
-                console.error("Nem sikerült betölteni: " + playlist[index]);
-                findAndPlay(index + 1, elapsed); // Átugorja a hibás fájlt
-            };
+            playLogic(0, elapsed);
         }
 
-        btn.onclick = () => {
+        document.getElementById('startBtn').onclick = () => {
             syncAndPlay();
-            btn.disabled = true;
-            btn.innerText = "ÉLŐ ADÁS";
+            document.getElementById('startBtn').style.display = 'none';
         };
-
+        
         window.resetTime = () => {
             db.ref('radioState').set({ playlistStartedAt: Date.now() });
-            alert("Rádió újraindítva!");
             location.reload();
         };
     </script>
