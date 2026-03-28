@@ -2,26 +2,33 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>TheBeanyx Radio 24/7</title>
+    <title>TheBeanyx Radio - Live Control</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .box { border: 2px solid #0f0; padding: 30px; background: #050505; }
-        button { padding: 15px 30px; background: #0f0; color: #000; border: none; font-weight: bold; cursor: pointer; font-size: 1.2rem; }
-        button:hover { background: #fff; }
-        #trackTitle { margin: 20px 0; min-height: 1.5em; color: white; }
+        body { background: #0a0a0a; color: #00ff00; font-family: 'Courier New', monospace; text-align: center; padding: 20px; }
+        .container { max-width: 600px; margin: auto; border: 2px solid #00ff00; padding: 20px; background: #111; }
+        h1 { text-shadow: 0 0 10px #00ff00; }
+        #nowPlaying { font-size: 1.2em; color: white; margin: 20px 0; padding: 10px; border: 1px dashed #00ff00; }
+        .playlist-container { text-align: left; margin-top: 20px; max-height: 300px; overflow-y: auto; border-top: 1px solid #00ff00; }
+        .track-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #222; transition: 0.2s; }
+        .track-item:hover { background: #00ff00; color: #000; }
+        .btn-main { background: #00ff00; color: #000; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="box">
+    <div class="container">
         <h1>THE BEANYX RADIO</h1>
-        <div id="trackTitle">RENDSZER ONLINE</div>
-        <button id="startBtn">ADÁS HALLGATÁSA</button>
+        <div id="nowPlaying">VÁRAKOZÁS...</div>
+        
+        <button id="syncBtn" class="btn-main">BEKAPCSOLÓDÁS AZ ADÁSBA</button>
+
+        <div class="playlist-container" id="playlistDisplay">
+            </div>
     </div>
 
-    <audio id="player" preload="auto"></audio>
+    <audio id="player"></audio>
 
     <script>
         const firebaseConfig = {
@@ -46,63 +53,62 @@
         ];
 
         const player = document.getElementById('player');
-        const title = document.getElementById('trackTitle');
-        const btn = document.getElementById('startBtn');
+        const titleDisp = document.getElementById('nowPlaying');
+        const listDisp = document.getElementById('playlistDisplay');
 
-        async function startRadio() {
-            title.innerText = "SZINKRONIZÁLÁS...";
-            const snap = await db.ref('radioState/playlistStartedAt').get();
-            const startTime = snap.val();
-            
-            let totalElapsed = (Date.now() - startTime) / 1000;
-            playCurrent(0, totalElapsed);
+        // 1. LISTA GENERÁLÁSA
+        playlist.forEach((track, index) => {
+            let div = document.createElement('div');
+            div.className = 'track-item';
+            div.innerText = (index + 1) + ". " + track;
+            div.onclick = () => changeTrack(index);
+            listDisp.appendChild(div);
+        });
+
+        // 2. DAL VÁLTÁSA (Ez frissíti a Firebase-t mindenkinél)
+        function changeTrack(index) {
+            db.ref('radioState').set({
+                currentTrackIndex: index,
+                playlistStartedAt: Date.now()
+            });
         }
 
-        function playCurrent(index, elapsed) {
-            if (index >= playlist.length) {
-                // Ha a végére értünk, kezdjük újra a számolást (Loop)
-                startRadio();
-                return;
-            }
+        // 3. FIGYELŐ (Amint változik a Firebase, ez lefut mindenkinél)
+        db.ref('radioState').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
 
-            const trackName = playlist[index];
+            const trackIndex = data.currentTrackIndex;
+            const startTime = data.playlistStartedAt;
+            const elapsed = (Date.now() - startTime) / 1000;
+
+            const trackName = playlist[trackIndex];
             player.src = encodeURIComponent(trackName);
-            player.load(); // Kényszerített újratöltés
-
-            // Megvárjuk, amíg a böngésző megmondja, milyen hosszú a fájl
-            player.onloadedmetadata = () => {
-                const duration = player.duration;
-                if (elapsed < duration) {
+            
+            player.onmetadata = () => {}; // Üres, de kell a stabilitáshoz
+            
+            player.onloadeddata = () => {
+                if (elapsed < player.duration) {
                     player.currentTime = elapsed;
-                    player.play().catch(e => {
-                        console.error("Lejátszási hiba:", e);
-                        title.innerText = "KATTINTS MÉG EGYSZER!";
-                    });
-                    title.innerText = "MOST SZÓL: " + trackName;
-                    
-                    player.onended = () => {
-                        playCurrent((index + 1) % playlist.length, 0);
-                    };
-                } else {
-                    playCurrent(index + 1, elapsed - duration);
+                    player.play().catch(e => console.log("Interakció kell a lejátszáshoz"));
+                    titleDisp.innerText = "MOST SZÓL: " + trackName;
                 }
             };
+        });
 
-            player.onerror = () => {
-                console.warn("Fájl nem található, ugrom: " + trackName);
-                playCurrent(index + 1, elapsed);
-            };
-        }
-
-        btn.onclick = () => {
-            startRadio();
-            btn.style.display = 'none';
+        document.getElementById('syncBtn').onclick = () => {
+            document.getElementById('syncBtn').style.display = 'none';
+            // Itt csak manuálisan frissítünk egyet, a többit a '.on' figyeli
+            player.play().catch(e => console.log("Lejátszás indítva"));
         };
 
-        // ADMIN: resetTime() a konzolba az indításhoz
-        window.resetTime = () => {
-            db.ref('radioState').set({ playlistStartedAt: Date.now() });
-            location.reload();
+        // Automatikus ugrás a következőre, ha vége a dalnak
+        player.onended = () => {
+            // Megkeressük a mostani indexet és váltunk a következőre
+            db.ref('radioState/currentTrackIndex').get().then(snap => {
+                let next = (snap.val() + 1) % playlist.length;
+                changeTrack(next);
+            });
         };
     </script>
 </body>
