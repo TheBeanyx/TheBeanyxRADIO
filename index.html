@@ -2,258 +2,29 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suno DJ Pro - Professzionális Automata</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <style>
-        body { background: #0b0b0b; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        .card { background: #161616; padding: 25px; border-radius: 20px; border: 1px solid #00ff96; width: 100%; max-width: 480px; text-align: center; box-shadow: 0 0 30px rgba(0,255,150,0.15); }
-        .btn { padding: 10px; width: 100%; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin: 4px 0; transition: 0.2s; text-transform: uppercase; font-size: 12px; }
-        .play { background: #00ff96; color: #000; }
-        .info-btn { background: #f1c40f; color: #000; }
-        .stop { background: #ff4b2b; color: #fff; }
-        #unmute-btn { background: #ff9800; display: none; animation: flash 1.5s infinite; }
-        @keyframes flash { 50% { opacity: 0.6; } }
-        select, input { width: 100%; padding: 8px; margin-bottom: 5px; background: #222; border: 1px solid #444; color: #fff; border-radius: 5px; box-sizing: border-box; }
-        .admin-box { background: #1f1f1f; padding: 12px; border-radius: 12px; margin-top: 10px; text-align: left; border: 1px solid #333; }
-        label { font-size: 10px; color: #00ff96; font-weight: bold; display: block; margin-bottom: 2px; }
-        .playlist-items { max-height: 80px; overflow-y: auto; background: #111; padding: 5px; border-radius: 5px; font-size: 11px; border: 1px solid #333; margin-bottom: 5px; }
-        .status { font-size: 12px; color: #888; margin-top: 10px; border-top: 1px solid #333; padding-top: 5px; }
-    </style>
+    <title>Webrádió</title>
 </head>
 <body>
+    <h1>Élő Webrádió</h1>
+    <audio id="radio" controls autoplay></audio>
 
-<div class="card">
-    <h2 id="title" style="margin:0 0 10px 0;">Suno DJ Pro Automata</h2>
-    
-    <div id="login-panel">
-        <input type="password" id="pw" placeholder="Jelszó">
-        <button class="btn play" onclick="init('admin')">Admin Belépés</button>
-        <button class="btn" style="background:#444; color:white;" onclick="init('user')">Hallgató Belépés</button>
-    </div>
-
-    <button id="unmute-btn" class="btn" onclick="activateAudio()">⚠️ HANG AKTIVÁLÁSA</button>
-
-    <div id="admin-controls" style="display:none;">
-        <div class="admin-box">
-            <label>ZENE:</label>
-            <select id="track-selector">
-                <option value="RANDOM">--- VÉLETLEN ---</option>
-                <option value="Black Halo Protocol (1).mp3">Black Halo Protocol (1)</option>
-                <option value="Black Halo Protocol (2).mp3">Black Halo Protocol (2)</option>
-                <option value="Demon Season (1).mp3">Demon Season (1)</option>
-                <option value="Demon Season.mp3">Demon Season</option>
-                <option value="Dust On The Sunday Sun (1).mp3">Dust On The Sunday Sun (1)</option>
-                <option value="Dust On The Sunday Sun.mp3">Dust On The Sunday Sun</option>
-                <option value="Fractured Tongues, Broken Amps (1).mp3">Fractured Tongues, Broken Amps (1)</option>
-                <option value="Fractured Tongues, Broken Amps.mp3">Fractured Tongues, Broken Amps</option>
-                <option value="Golden Afternoon Switch (1).mp3">Golden Afternoon Switch (1)</option>
-                <option value="Golden Afternoon Switch.mp3">Golden Afternoon Switch</option>
-                <option value="Halfway To The Horizon (1).mp3">Halfway To The Horizon (1)</option>
-                <option value="Halfway To The Horizon.mp3">Halfway To The Horizon</option>
-                <option value="Rise Like Thunder (1).mp3">Rise Like Thunder (1)</option>
-                <option value="Rise Like Thunder.mp3">Rise Like Thunder</option>
-                <option value="Run The Gauntlet (1).mp3">Run The Gauntlet (1)</option>
-                <option value="Run The Gauntlet.mp3">Run The Gauntlet</option>
-                <option value="Side of the Sun (1).mp3">Side of the Sun (1)</option>
-                <option value="Side of the Sun.mp3">Side of the Sun</option>
-                <option value="Sun On My Sneakers (1).mp3">Sun On My Sneakers (1)</option>
-                <option value="Sun On My Sneakers.mp3">Sun On My Sneakers</option>
-                <option value="Velvet Afterglow (1).mp3">Velvet Afterglow (1)</option>
-                <option value="Velvet Afterglow.mp3">Velvet Afterglow</option>
-            </select>
-            <button class="btn play" onclick="broadcast('play')">▶ INDÍTÁS</button>
-            <button class="btn info-btn" onclick="broadcast('full_info')">📢 TELJES INFÓ MOST</button>
-            <button class="btn stop" onclick="broadcast('stop')">■ STOP</button>
-        </div>
-
-        <div class="admin-box">
-            <label>PLAYLIST KEZELŐ:</label>
-            <button class="btn" style="background:#333; color:white; font-size:10px;" onclick="addToPlaylist()">+ Hozzáadás</button>
-            <div id="playlist-preview" class="playlist-items">Üres...</div>
-            <input type="text" id="playlist-name" placeholder="Lista neve">
-            <button class="btn" style="background:#3498db; color:white;" onclick="savePlaylist()">Mentés</button>
-            <select id="saved-playlists-dropdown" style="margin-top:5px;" onchange="loadPlaylist(this.value)">
-                <option value="">-- Mentett listák --</option>
-            </select>
-        </div>
-    </div>
-
-    <p id="msg" class="status">Várakozás...</p>
-</div>
-
-<audio id="player" crossorigin="anonymous"></audio>
-
-<script>
-    const player = document.getElementById('player');
-    const trackSelector = document.getElementById('track-selector');
-    const playlistPreview = document.getElementById('playlist-preview');
-    const savedDropdown = document.getElementById('saved-playlists-dropdown');
-    
-    let peer, conns = [];
-    let currentPlaylist = [];
-    let isAdmin = false;
-    let currentTrack = "";
-    const SERVER_ID = "Suno-Automata-Radio-2024-Final"; 
-
-    window.onload = updateSavedDropdown;
-
-    // AUTOMATA IDŐZÍTŐ
-    setInterval(() => {
-        if (!isAdmin) return;
-        const now = new Date();
-        const m = now.getMinutes();
-        const s = now.getSeconds();
-        const h = now.getHours();
-
-        if (s === 0) {
-            if (m === 0 && (h === 7 || h === 17)) broadcast('full_info');
-            else if (m === 0 || m === 30) broadcast('full_info'); // Mostantól a 30 perces is teljes infó a jobb élményért
-            else if (m === 15 || m === 45) broadcast('time_info');
-        }
-    }, 1000);
-
-    async function getFullReport() {
-        const now = new Date();
-        let text = `Üdvözlöm a kedves hallgatókat, ez itt a Suno DJ Pro! A pontos időnk jelenleg ${now.getHours()} óra ${now.getMinutes()} perc. `;
+    <script>
+        const playlist = [
+            "https://pelda.hu/zene1.mp3",
+            "https://pelda.hu/zene2.mp3"
+        ];
         
-        // Névnap
-        try {
-            const r = await fetch('https://api.nevenapja.hu/mai');
-            const d = await r.json();
-            text += `Külön köszöntöm ${d.nevnapok.join(' és ')} nevű hallgatóinkat, minden jót nekik a névnapjuk alkalmából! `;
-        } catch(e) { text += "Nagyon sok boldogságot kívánunk a mai nap névnapjait ünneplőknek! "; }
+        let index = 0;
+        const player = document.getElementById('radio');
 
-        // Időjárás (Dinamikus csapadék figyeléssel)
-        try {
-            const w = await fetch('https://api.open-meteo.com/v1/forecast?latitude=47.4979&longitude=19.0402&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum&current_weather=true&timezone=auto');
-            const wd = await w.json();
-            const rain = wd.daily.precipitation_sum[0];
-            const snow = wd.daily.snowfall_sum[0];
-
-            text += `Lássuk, mi újság kint! Jelenleg ${Math.round(wd.current_weather.temperature)} fokot mérhetünk. `;
-            
-            if (snow > 0) text += `Figyelem! Havazás várható, készüljenek a hólapátok, és mindenki vigyázzon az utakon! Jó hólapátolást mindenkinek! `;
-            else if (rain > 0.5) text += `Sajnos az esernyőket ne hagyják otthon, mert jelentős csapadékra számíthatunk a mai napon. `;
-            else text += `Szerencsére az égiek kegyesek hozzánk, nem várható komolyabb eső vagy hó, élvezzék a napsütést! `;
-
-            text += `A hét további részében: Holnap ${Math.round(wd.daily.temperature_2m_max[1])} fok körül alakul a csúcs. Tartsanak velünk továbbra is! `;
-        } catch(e) { text += "Az időjárás jelentésünk technikai okok miatt rövidült, de a lényeg: maradjanak a zenénél! "; }
-
-        return text;
-    }
-
-    function speak(text, callback) {
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'hu-HU';
-        msg.rate = 1.05;
-        msg.pitch = 1.1;
-        msg.onend = callback;
-        window.speechSynthesis.speak(msg);
-    }
-
-    function init(mode) {
-        if(mode === 'admin' && document.getElementById('pw').value !== '123') return alert("Hiba!");
-        isAdmin = (mode === 'admin');
-        document.getElementById('login-panel').style.display = 'none';
-        document.getElementById('unmute-btn').style.display = 'block';
-
-        peer = new Peer(isAdmin ? SERVER_ID : null);
-        peer.on('open', () => {
-            document.getElementById('msg').innerText = isAdmin ? "Adásvezérlő online." : "Csatlakozva.";
-            if(isAdmin) document.getElementById('admin-controls').style.display = 'block';
-            else connectToAdmin();
-        });
-        peer.on('connection', c => {
-            conns.push(c);
-            // Ha van éppen futó zene, elküldjük az új csatlakozónak
-            if(currentTrack) c.send({ cmd: 'play', file: currentTrack });
-        });
-    }
-
-    function connectToAdmin() {
-        const c = peer.connect(SERVER_ID);
-        c.on('data', data => handleCommand(data));
-        c.on('open', () => {
-            // Csatlakozáskor jelezzük az adminnak
-            console.log("Kapcsolat létrejött az adminnal.");
-        });
-    }
-
-    async function handleCommand(data) {
-        if(data.cmd === 'play') {
-            currentTrack = data.file;
-            player.src = data.file;
-            player.volume = 1;
-            player.play().catch(() => {
-                document.getElementById('msg').innerText = "Kattints a HANG AKTIVÁLÁSA gombra!";
-            });
-            document.getElementById('msg').innerText = "Most szól: " + data.file;
+        function playNext() {
+            player.src = playlist[index];
+            player.play();
+            index = (index + 1) % playlist.length;
         }
-        if(data.cmd === 'stop') { player.pause(); currentTrack = ""; }
-        
-        if(['full_info', 'time_info'].includes(data.cmd)) {
-            player.volume = 0.2;
-            const text = await getFullReport();
-            speak(text, () => player.volume = 1);
-        }
-    }
 
-    function broadcast(cmd) {
-        let file = trackSelector.value;
-        if(file === "RANDOM") {
-            const opts = Array.from(trackSelector.options).filter(o => o.value !== "RANDOM");
-            file = opts[Math.floor(Math.random() * opts.length)].value;
-        }
-        if(cmd === 'play') currentTrack = file;
-        const payload = { cmd: cmd, file: file };
-        conns.forEach(c => c.send(payload));
-        handleCommand(payload);
-    }
-
-    function activateAudio() {
-        player.play().then(() => {
-            player.pause();
-            document.getElementById('unmute-btn').style.display = 'none';
-            document.getElementById('msg').innerText = "Hang engedélyezve! Az adás indul...";
-            // Automatikus indítás: ha már van kijelölt zene, elindítjuk
-            if(currentTrack) {
-                player.src = currentTrack;
-                player.play();
-            }
-        }).catch(e => {
-            alert("Kérlek kattints még egyszer a gombra!");
-        });
-    }
-
-    // PLAYLIST FUNKCIÓK (Változatlanul megmaradtak)
-    function addToPlaylist() {
-        if(trackSelector.value === "RANDOM") return;
-        currentPlaylist.push(trackSelector.value);
-        playlistPreview.innerText = currentPlaylist.join("\n");
-    }
-    function savePlaylist() {
-        const name = document.getElementById('playlist-name').value;
-        if(!name) return;
-        let p = JSON.parse(localStorage.getItem('radioPlaylists') || '{}');
-        p[name] = currentPlaylist;
-        localStorage.setItem('radioPlaylists', JSON.stringify(p));
-        updateSavedDropdown();
-        alert("Lista mentve!");
-    }
-    function updateSavedDropdown() {
-        let p = JSON.parse(localStorage.getItem('radioPlaylists') || '{}');
-        savedDropdown.innerHTML = '<option value="">-- Mentett listák --</option>';
-        for(let n in p) {
-            let o = document.createElement('option'); o.value = n; o.innerText = n; savedDropdown.appendChild(o);
-        }
-    }
-    function loadPlaylist(n) {
-        if(!n) return;
-        let p = JSON.parse(localStorage.getItem('radioPlaylists') || '{}');
-        currentPlaylist = p[n];
-        playlistPreview.innerText = currentPlaylist.join("\n");
-    }
-</script>
+        player.onended = playNext;
+        playNext();
+    </script>
 </body>
 </html>
