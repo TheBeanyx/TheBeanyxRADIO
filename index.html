@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DöBéjnix Radio Pro - 2026 Edition</title>
+    <title>TheBeanyxRADIO - Élőadás</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
@@ -70,7 +70,7 @@
     </nav>
 
     <div class="glass-card" id="mainUI">
-        <h1 style="font-family: 'Orbitron'; letter-spacing: 4px;">DÖBÉJNIX RADIO</h1>
+        <h1 style="font-family: 'Orbitron'; letter-spacing: 4px;">TheBeanyxRADIO - Élőaáds</h1>
         <div id="aiStatus"></div>
         <div class="time-display" id="clock">00:00:00</div>
         
@@ -83,15 +83,15 @@
         </div>
 
         <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 20px; border-left: 5px solid var(--secondary);">
-            <i style="font-size: 0.8rem; opacity: 0.5;">ON AIR:</i>
+            <i style="font-size: 0.8rem; opacity: 0.5;">Éppen szól:</i>
             <div id="trackTitle" style="font-size: 1.4rem; font-weight: bold;">Rendszer betöltése...</div>
         </div>
         <br>
-        <button id="startBtn" class="btn" style="padding: 20px 60px; font-size: 1.2rem;">RÁDIÓ INDÍTÁSA</button>
+        <button id="startBtn" class="btn" style="padding: 20px 60px; font-size: 1.2rem;">Adás hallgatása</button>
     </div>
 
     <div id="loginUI" class="glass-card hidden">
-        <h2>STUDIO ACCESS</h2>
+        <h2>Belépés az ADMIN módba</h2>
         <input type="password" id="pass" placeholder="Password">
         <button class="btn" onclick="checkLogin()">ENTER</button>
         <button class="btn" style="background:#444" onclick="hideAll()">BACK</button>
@@ -102,17 +102,17 @@
         
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div>
-                <h3>Playlist</h3>
+                <h3>Lejátszái lista</h3>
                 <div class="admin-scroll" id="adminPlaylist"></div>
             </div>
             <div>
-                <h3>Breaking News</h3>
+                <h3>Hirtelen bemondás</h3>
                 <textarea id="breakingText" rows="4" placeholder="Írd ide a rendkívüli bemondás szövegét..."></textarea>
                 <button class="btn" style="width:100%; background: #c00;" onclick="sendEmergency()">AZONNALI BEMONDÁS</button>
             </div>
         </div>
         <br>
-        <button class="btn" onclick="hideAll()">EXIT CONSOLE</button>
+        <button class="btn" onclick="hideAll()">Kilépés</button>
     </div>
 
     <audio id="player"></audio>
@@ -184,7 +184,7 @@
             const sched = ["07:00", "07:30", "08:00", "08:15", "08:30", "09:00", "09:30", "10:00", "10:15", "10:30", "11:00", "11:30", "12:00", "12:15", "12:30", "12:45", "13:00", "14:00", "15:00", "16:00", "16:30", "17:00", "17:30", "18:00", "19:00"];
             
             if (sched.includes(time) && sec === 0 && !isSpeaking) {
-                const txt = `Üdvözlök mindenkit itt a DöBéjnix rádióban! ${time} van. Az ország nyugati részén, Pécsen ${cities.pecs.t} fok és ${cities.pecs.s} várható, ${cities.pecs.w} kilométer per órás széllel. Keleten Debrecenben ${cities.debrecen.t} fok van. Délen Szegeden ${cities.szeged.t} fokot mérünk. Északon Miskolc környékén ${cities.miskolc.t} fokra és ${cities.miskolc.s}-re számíthatnak. A fővárosban pedig ${cities.bp.t} fok a hőmérséklet. További jó szórakozást!`;
+                const txt = `Üdvözlök mindenkit itt a DöBéjnix rádióban! ${time} van. Az ország nyugati részén, Pécsen ${cities.pecs.t} fok és ${cities.pecs.s} várható, ${cities.pecs.w} kilométer per órás széllel. Keleten Debrecenben ${cities.debrecen.t} fok van és az időjárás ${cities.pecs.s} és ${cities.pecs.w} ás szél mérhető. Délen Szegeden ${cities.szeged.t} fokot mérünk és ${cities.miskolc.s} -re lehet készülni. Északon Miskolc környékén ${cities.miskolc.t} fokra és ${cities.miskolc.s}-re számíthatnak. A fővárosban pedig ${cities.bp.t} fok a hőmérséklet. Az idő pedig ${cities.bp.t} és a szél ${cities.bp.t} További jó szórakozást!`;
                 speak(txt);
             }
         }
