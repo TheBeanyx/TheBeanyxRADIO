@@ -11,38 +11,33 @@
         :root { --bg: #0a0a0b; --text: #e0e0e0; --accent: #00ffcc; --panel: #16161a; }
         [data-theme="light"] { --bg: #f0f2f5; --text: #1c1e21; --accent: #007bff; --panel: #ffffff; }
 
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; transition: 0.5s; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; transition: 0.5s; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         nav { width: 100%; padding: 20px; display: flex; justify-content: flex-end; box-sizing: border-box; }
         
         .main-card { width: 90%; max-width: 500px; background: var(--panel); border-radius: 20px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); text-align: center; border: 1px solid rgba(255,255,255,0.1); margin-top: 20px; }
-        
-        .status-badge { background: rgba(0, 255, 204, 0.1); color: var(--accent); padding: 5px 15px; border-radius: 20px; font-size: 0.8em; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        
         #clock { font-size: 3.5rem; font-weight: 800; margin: 10px 0; letter-spacing: -2px; }
         .date-weather { display: flex; justify-content: center; gap: 20px; font-size: 0.9em; opacity: 0.7; margin-bottom: 30px; }
         
         #nowPlayingBox { background: rgba(0,0,0,0.2); border-radius: 15px; padding: 20px; margin: 20px 0; border-left: 4px solid var(--accent); }
-        .label { font-size: 0.7em; opacity: 0.5; text-transform: uppercase; margin-bottom: 5px; display: block; }
         #trackTitle { font-size: 1.2em; font-weight: 600; color: #fff; }
 
-        .btn { background: var(--accent); color: #000; border: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 1em; transition: 0.3s; }
+        .btn { background: var(--accent); color: #000; border: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent); }
         .hidden { display: none !important; }
 
         .admin-list { text-align: left; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; margin-top: 15px; }
         .track-row { padding: 10px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9em; }
-        .track-row:hover { color: var(--accent); }
+        #aiStatus { font-size: 0.8em; margin-top: 10px; color: var(--accent); font-weight: bold; opacity: 0; transition: 0.3s; }
     </style>
 </head>
 <body data-theme="dark">
 
     <nav>
         <span style="cursor:pointer; font-size: 1.5em;" onclick="toggleTheme()">🌓</span>
-        <button onclick="showLogin()" class="btn" style="padding: 5px 15px; margin-left:15px; font-size: 0.8em;">Admin</button>
+        <button onclick="showLogin()" class="btn" style="padding: 5px 15px; margin-left:15px; font-size: 0.8em;">ADMIN</button>
     </nav>
 
     <div id="playerUI" class="main-card">
-        <span class="status-badge">Live Broadcast</span>
         <div id="clock">00:00</div>
         <div class="date-weather">
             <span id="dateText">...</span>
@@ -50,31 +45,30 @@
         </div>
 
         <div id="nowPlayingBox">
-            <span class="label">Current Track</span>
+            <span style="font-size: 0.7em; opacity: 0.5; text-transform: uppercase;">Current Track</span>
             <div id="trackTitle">Radio Standby</div>
         </div>
 
         <button id="startBtn" class="btn">LISTEN LIVE</button>
-        <div id="aiStatus" style="font-size: 0.7em; margin-top: 10px; color: var(--accent); opacity: 0;">AI is speaking...</div>
+        <div id="aiStatus">ELEVENLABS AI IS SPEAKING...</div>
     </div>
 
     <div id="loginUI" class="main-card hidden">
-        <h3>Studio Access</h3>
-        <input type="password" id="adminPass" placeholder="Password" style="width:80%; padding:10px; margin-bottom:10px; border-radius:5px; border:none;"><br>
+        <h3>Studio Login</h3>
+        <input type="password" id="adminPass" placeholder="Password" style="width:80%; padding:10px; margin-bottom:10px;"><br>
         <button class="btn" onclick="login()">Enter</button>
         <button class="btn" style="background:#444;" onclick="hideLogin()">Back</button>
     </div>
 
     <div id="adminUI" class="main-card hidden">
-        <h3>Console Control</h3>
+        <h3>Broadcast Control</h3>
         <div class="admin-list" id="fullPlaylist"></div>
         <button class="btn" style="margin-top:20px; background:#ff4444;" onclick="location.reload()">Logout</button>
     </div>
 
-    <audio id="audioElement"></audio>
+    <audio id="mainAudio"></audio>
 
     <script>
-        // --- CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyBLZVnNY-HdYw7vpSfF6ewJHLru2l6e9WE",
             databaseURL: "https://thebeanyxradio-default-rtdb.europe-west1.firebasedatabase.app"
@@ -82,8 +76,8 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const ELEVEN_LABS_KEY = "sk_22b8345bb661d5159ba56d964b42d3b2c4275fba84001236";
-        const VOICE_ID = "TumdjBNWanlT3ysvclWh"; // Péter hangja
+        const API_KEY = "sk_22b8345bb661d5159ba56d964b42d3b2c4275fba84001236";
+        const VOICE_ID = "TumdjBNWanlT3ysvclWh"; // Péter
 
         const playlist = [
             "Black Halo Protocol (1).mp3", "Black Halo Protocol (2).mp3",
@@ -99,74 +93,67 @@
             "Velvet Afterglow (1).mp3", "Velvet Afterglow.mp3"
         ];
 
-        const audio = document.getElementById('audioElement');
-        let isAIPlaying = false;
+        const audio = document.getElementById('mainAudio');
+        let aiBusy = false;
+        let weatherMsg = "nice weather";
 
-        // --- UI FUNCTIONS ---
-        function updateUI() {
+        function updateTime() {
             const now = new Date();
             document.getElementById('clock').innerText = now.toLocaleTimeString('hu-HU', {hour:'2-digit', minute:'2-digit'});
             document.getElementById('dateText').innerText = now.toLocaleDateString('hu-HU', {month:'short', day:'numeric'});
             
-            // Fix 10:30 AI bemondás
-            if(now.getHours() === 10 && now.getMinutes() === 48 && now.getSeconds() === 0) {
-                speakElevenLabs(`It is exactly half past ten. Have a great time with Beanyx Radio.`);
+            // Fix bemondás 10:52-kor
+            if(now.getHours() === 10 && now.getMinutes() === 53 && now.getSeconds() === 0) {
+                speakAI(`Good morning! It is exactly ten fifty-two. The temperature is ${weatherMsg}. Stay tuned to Beanyx Radio.`);
             }
         }
-        setInterval(updateUI, 1000);
+        setInterval(updateTime, 1000);
 
-        async function getWeather() {
+        async function fetchWeather() {
             try {
                 const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=47.47&longitude=18.82&current_weather=true');
                 const d = await r.json();
-                document.getElementById('weatherText').innerText = Math.round(d.current_weather.temperature) + "°C Biatorbágy";
-            } catch(e) { document.getElementById('weatherText').innerText = "Clear Sky"; }
+                const temp = Math.round(d.current_weather.temperature);
+                weatherMsg = temp + " degrees celsius";
+                document.getElementById('weatherText').innerText = temp + "°C Biatorbágy";
+            } catch(e) { document.getElementById('weatherText').innerText = "Sunny"; }
         }
-        getWeather();
+        fetchWeather();
 
-        function toggleTheme() {
-            const b = document.body;
-            b.setAttribute('data-theme', b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-        }
-
-        // --- ELEVENLABS AI ENGINE ---
-        async function speakElevenLabs(text) {
-            isAIPlaying = true;
+        async function speakAI(text) {
+            aiBusy = true;
             document.getElementById('aiStatus').style.opacity = "1";
             audio.pause();
 
             try {
-                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${TumdjBNWanlT3ysvclWh}`, {
+                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
                     method: 'POST',
-                    headers: { 'xi-api-key': sk_22b8345bb661d5159ba56d964b42d3b2c4275fba84001236, 'Content-Type': 'application/json' },
+                    headers: { 'xi-api-key': API_KEY, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: text,
-                        model_id: "eleven_multilingual_v2",
-                        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                        model_id: "eleven_multilingual_v2"
                     })
                 });
 
                 const blob = await response.blob();
                 const url = URL.createObjectURL(blob);
                 const aiAudio = new Audio(url);
+                aiAudio.play();
                 
                 aiAudio.onended = () => {
-                    isAIPlaying = false;
+                    aiBusy = false;
                     document.getElementById('aiStatus').style.opacity = "0";
-                    syncRadio(); // Beszéd után vissza a zenéhez
+                    syncRadio();
                 };
-                aiAudio.play();
             } catch (err) {
-                console.error("AI Error:", err);
-                isAIPlaying = false;
+                console.error("ElevenLabs Error:", err);
+                aiBusy = false;
                 syncRadio();
             }
         }
 
-        // --- RADIO CORE ---
         async function syncRadio() {
-            if(isAIPlaying) return;
-
+            if(aiBusy) return;
             const snap = await db.ref('radioState').get();
             const data = snap.val();
             if(!data) return;
@@ -178,47 +165,38 @@
             audio.onloadedmetadata = () => {
                 if(elapsed < audio.duration) {
                     audio.currentTime = elapsed;
-                    audio.play().catch(() => { document.getElementById('trackTitle').innerText = "Click Listen Button"; });
+                    audio.play().catch(() => { document.getElementById('trackTitle').innerText = "Press Listen Live"; });
                     document.getElementById('trackTitle').innerText = track.replace('.mp3', '');
                 } else {
-                    // Ha a dalnak vége, admin módban léptetünk
-                    nextTrack();
+                    autoNext();
                 }
             };
         }
 
-        function nextTrack() {
+        function autoNext() {
             db.ref('radioState/currentTrackIndex').get().then(s => {
-                let nextIdx = (s.val() + 1) % playlist.length;
-                let nextName = playlist[nextIdx].replace('.mp3', '');
-                
-                // Minden zene előtt AI bemondás
-                db.ref('radioState').set({ 
-                    currentTrackIndex: nextIdx, 
-                    playlistStartedAt: Date.now() + 5000 // Csúsztatás az AI miatt
-                });
-                
-                speakElevenLabs(`Now playing: ${nextName}. On Beanyx Radio.`);
+                let next = (s.val() + 1) % playlist.length;
+                db.ref('radioState').set({ currentTrackIndex: next, playlistStartedAt: Date.now() + 5000 });
+                speakAI(`Now playing: ${playlist[next].replace('.mp3', '')}. You are listening to Beanyx Radio.`);
             });
         }
-
-        db.ref('radioState').on('value', () => { if(!isAIPlaying) syncRadio(); });
 
         document.getElementById('startBtn').onclick = function() {
             this.classList.add('hidden');
             syncRadio();
         };
 
-        // --- ADMIN ---
+        db.ref('radioState').on('value', () => { if(!aiBusy) syncRadio(); });
+
+        // Admin lista generálás
         const alist = document.getElementById('fullPlaylist');
         playlist.forEach((t, i) => {
             let r = document.createElement('div');
             r.className = 'track-row';
             r.innerText = t;
             r.onclick = () => {
-                let name = t.replace('.mp3', '');
-                db.ref('radioState').set({ currentTrackIndex: i, playlistStartedAt: Date.now() + 4000 });
-                speakElevenLabs(`Changing station. Now playing: ${name}.`);
+                db.ref('radioState').set({ currentTrackIndex: i, playlistStartedAt: Date.now() + 4500 });
+                speakAI(`Coming up next: ${t.replace('.mp3', '')}. Only on Beanyx.`);
             };
             alist.appendChild(r);
         });
@@ -230,6 +208,10 @@
                 document.getElementById('loginUI').classList.add('hidden');
                 document.getElementById('adminUI').classList.remove('hidden');
             } else { alert("Wrong password"); }
+        }
+        function toggleTheme() {
+            const b = document.body;
+            b.setAttribute('data-theme', b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
         }
     </script>
 </body>
