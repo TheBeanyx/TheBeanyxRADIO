@@ -109,7 +109,7 @@
             document.getElementById('dateText').innerText = now.toLocaleDateString('hu-HU', {month:'short', day:'numeric'});
             
             // Fix 10:30 AI bemondás
-            if(now.getHours() === 10 && now.getMinutes() === 40 && now.getSeconds() === 0) {
+            if(now.getHours() === 10 && now.getMinutes() === 48 && now.getSeconds() === 0) {
                 speakElevenLabs(`It is exactly half past ten. Have a great time with Beanyx Radio.`);
             }
         }
