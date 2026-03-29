@@ -2,35 +2,76 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>TheBeanyx Radio - Live Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TheBeanyx Cloud Radio</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { background: #0a0a0a; color: #00ff00; font-family: 'Courier New', monospace; text-align: center; padding: 20px; }
-        .container { max-width: 600px; margin: auto; border: 2px solid #00ff00; padding: 20px; background: #111; }
-        h1 { text-shadow: 0 0 10px #00ff00; }
-        #nowPlaying { font-size: 1.2em; color: white; margin: 20px 0; padding: 10px; border: 1px dashed #00ff00; }
-        .playlist-container { text-align: left; margin-top: 20px; max-height: 300px; overflow-y: auto; border-top: 1px solid #00ff00; }
-        .track-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #222; transition: 0.2s; }
-        .track-item:hover { background: #00ff00; color: #000; }
-        .btn-main { background: #00ff00; color: #000; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        :root { --bg: #f4f4f4; --text: #333; --panel: #fff; --accent: #007bff; }
+        [data-theme="dark"] { --bg: #0d0d0d; --text: #0f0; --panel: #1a1a1a; --accent: #00ff00; }
+
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: 0.3s; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        /* Navigáció */
+        nav { width: 100%; padding: 10px; display: flex; justify-content: flex-end; background: rgba(0,0,0,0.1); }
+        .btn-small { padding: 5px 15px; cursor: pointer; background: var(--accent); color: #000; border: none; font-weight: bold; border-radius: 5px; }
+
+        /* Panel stílusok */
+        .container { width: 90%; max-width: 500px; background: var(--panel); margin: 20px; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; border: 1px solid var(--accent); }
+        
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; font-size: 0.9em; opacity: 0.8; }
+        
+        #nowPlaying { font-size: 1.4em; font-weight: bold; margin: 20px 0; min-height: 1.5em; text-transform: uppercase; }
+        
+        .playlist-admin { text-align: left; max-height: 200px; overflow-y: auto; margin-top: 20px; border: 1px solid var(--accent); padding: 5px; }
+        .track-item { padding: 8px; cursor: pointer; border-bottom: 1px solid #444; font-size: 0.8em; }
+        .track-item:hover { background: var(--accent); color: #000; }
+
+        .hidden { display: none !important; }
+        input { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid var(--accent); background: #222; color: #fff; }
+        .theme-switch { cursor: pointer; font-size: 1.5em; margin-bottom: 10px; }
     </style>
 </head>
-<body>
+<body data-theme="dark">
 
-    <div class="container">
-        <h1>THE BEANYX RADIO</h1>
-        <div id="nowPlaying">VÁRAKOZÁS...</div>
+    <nav>
+        <div class="theme-switch" onclick="toggleTheme()">🌓</div>
+        <button id="loginBtn" class="btn-small" style="margin-left: 15px;">Admin Login</button>
+    </nav>
+
+    <div id="listenerPanel" class="container">
+        <div class="info-grid">
+            <div id="dateDisplay">Dátum...</div>
+            <div id="weatherDisplay">Időjárás...</div>
+            <div id="clockDisplay" style="grid-column: span 2; font-size: 2em; font-weight: bold;">00:00:00</div>
+        </div>
         
-        <button id="syncBtn" class="btn-main">BEKAPCSOLÓDÁS AZ ADÁSBA</button>
+        <hr style="border: 0; border-top: 1px solid var(--accent);">
+        
+        <div id="nowPlaying">RÁDIÓ KÉSZENLÉTBEN</div>
+        <button id="startBtn" class="btn-small" style="padding: 15px 30px; font-size: 1.2em;">HALLGATÁS</button>
+    </div>
 
-        <div class="playlist-container" id="playlistDisplay">
-            </div>
+    <div id="loginSection" class="container hidden">
+        <h2>Admin Belépés</h2>
+        <input type="text" id="username" placeholder="Felhasználónév"><br>
+        <input type="password" id="password" placeholder="Jelszó"><br>
+        <button class="btn-small" onclick="checkLogin()">Belépés</button>
+        <button class="btn-small" style="background: #666;" onclick="hideLogin()">Mégse</button>
+    </div>
+
+    <div id="adminPanel" class="container hidden">
+        <h2>📻 Állomásvezérlés</h2>
+        <p>Kattints egy dalra az indításhoz mindenkinél:</p>
+        <div class="playlist-admin" id="adminList"></div>
+        <br>
+        <button class="btn-small" style="background: #ff4444;" onclick="logout()">Kijelentkezés</button>
     </div>
 
     <audio id="player"></audio>
 
     <script>
+        // --- KONFIGURÁCIÓ ---
         const firebaseConfig = {
             apiKey: "AIzaSyBLZVnNY-HdYw7vpSfF6ewJHLru2l6e9WE",
             databaseURL: "https://thebeanyxradio-default-rtdb.europe-west1.firebasedatabase.app"
@@ -53,63 +94,95 @@
         ];
 
         const player = document.getElementById('player');
-        const titleDisp = document.getElementById('nowPlaying');
-        const listDisp = document.getElementById('playlistDisplay');
+        
+        // --- IDŐ ÉS IDŐJÁRÁS ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clockDisplay').innerText = now.toLocaleTimeString('hu-HU');
+            document.getElementById('dateDisplay').innerText = now.toLocaleDateString('hu-HU', {month:'long', day:'numeric'});
+        }
+        setInterval(updateClock, 1000);
 
-        // 1. LISTA GENERÁLÁSA
-        playlist.forEach((track, index) => {
-            let div = document.createElement('div');
-            div.className = 'track-item';
-            div.innerText = (index + 1) + ". " + track;
-            div.onclick = () => changeTrack(index);
-            listDisp.appendChild(div);
-        });
+        async function getWeather() {
+            try {
+                // Biatorbágy koordináták példaként (lat: 47.47, lon: 18.82)
+                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=47.47&longitude=18.82&current_weather=true');
+                const data = await res.json();
+                document.getElementById('weatherDisplay').innerText = `🌡️ ${Math.round(data.current_weather.temperature)}°C`;
+            } catch(e) { document.getElementById('weatherDisplay').innerText = "☀️ Napos"; }
+        }
+        getWeather();
 
-        // 2. DAL VÁLTÁSA (Ez frissíti a Firebase-t mindenkinél)
-        function changeTrack(index) {
-            db.ref('radioState').set({
-                currentTrackIndex: index,
-                playlistStartedAt: Date.now()
-            });
+        // --- TÉMA VÁLTÓ ---
+        function toggleTheme() {
+            const body = document.body;
+            body.setAttribute('data-theme', body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
         }
 
-        // 3. FIGYELŐ (Amint változik a Firebase, ez lefut mindenkinél)
+        // --- RÁDIÓ LOGIKA ---
         db.ref('radioState').on('value', (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
+            
+            const trackName = playlist[data.currentTrackIndex];
+            const elapsed = (Date.now() - data.playlistStartedAt) / 1000;
 
-            const trackIndex = data.currentTrackIndex;
-            const startTime = data.playlistStartedAt;
-            const elapsed = (Date.now() - startTime) / 1000;
-
-            const trackName = playlist[trackIndex];
             player.src = encodeURIComponent(trackName);
-            
-            player.onmetadata = () => {}; // Üres, de kell a stabilitáshoz
-            
             player.onloadeddata = () => {
                 if (elapsed < player.duration) {
                     player.currentTime = elapsed;
-                    player.play().catch(e => console.log("Interakció kell a lejátszáshoz"));
-                    titleDisp.innerText = "MOST SZÓL: " + trackName;
+                    player.play().catch(() => { document.getElementById('nowPlaying').innerText = "KATTINTS A HALLGATÁSRA!"; });
+                    document.getElementById('nowPlaying').innerText = "SZÓL: " + trackName.replace('.mp3','');
                 }
             };
         });
 
-        document.getElementById('syncBtn').onclick = () => {
-            document.getElementById('syncBtn').style.display = 'none';
-            // Itt csak manuálisan frissítünk egyet, a többit a '.on' figyeli
-            player.play().catch(e => console.log("Lejátszás indítva"));
+        document.getElementById('startBtn').onclick = () => {
+            player.play();
+            document.getElementById('startBtn').classList.add('hidden');
         };
 
-        // Automatikus ugrás a következőre, ha vége a dalnak
         player.onended = () => {
-            // Megkeressük a mostani indexet és váltunk a következőre
-            db.ref('radioState/currentTrackIndex').get().then(snap => {
-                let next = (snap.val() + 1) % playlist.length;
-                changeTrack(next);
-            });
+            if (isAdmin()) { // Csak az admin lépteti a globális időt
+                db.ref('radioState/currentTrackIndex').get().then(snap => {
+                    let next = (snap.val() + 1) % playlist.length;
+                    db.ref('radioState').set({ currentTrackIndex: next, playlistStartedAt: Date.now() });
+                });
+            }
         };
+
+        // --- ADMIN FUNKCIÓK ---
+        function isAdmin() { return !document.getElementById('adminPanel').classList.contains('hidden'); }
+
+        const adminList = document.getElementById('adminList');
+        playlist.forEach((t, i) => {
+            let d = document.createElement('div');
+            d.className = 'track-item';
+            d.innerText = t;
+            d.onclick = () => {
+                db.ref('radioState').set({ currentTrackIndex: i, playlistStartedAt: Date.now() });
+            };
+            adminList.appendChild(d);
+        });
+
+        document.getElementById('loginBtn').onclick = () => document.getElementById('loginSection').classList.remove('hidden');
+        function hideLogin() { document.getElementById('loginSection').classList.add('hidden'); }
+        
+        function checkLogin() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            // EGYSZERŰ JELSZÓ: admin / beanyx123
+            if(u === "admin" && p === "beanyx123") {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                document.getElementById('listenerPanel').classList.add('hidden');
+            } else { alert("Hibás adatok!"); }
+        }
+
+        function logout() {
+            document.getElementById('adminPanel').classList.add('hidden');
+            document.getElementById('listenerPanel').classList.remove('hidden');
+        }
     </script>
 </body>
 </html>
