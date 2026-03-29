@@ -3,67 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TheBeanyx Cloud Radio 24/7</title>
+    <title>TheBeanyx 3D Radio - Live</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     
     <style>
-        :root { --bg: #0d0d0d; --text: #00ff00; --panel: #1a1a1a; --accent: #00ff00; }
-        [data-theme="light"] { --bg: #f0f2f5; --text: #1c1e21; --accent: #007bff; --panel: #ffffff; }
+        :root { /* Dark Theme */
+            --bg-color: #080808;
+            --text-color: #00ff00;
+            --panel-bg: #111;
+            --accent-color: #00ff00;
+            --border-color: #00aa00;
+            --shadow-color: rgba(0,255,0,0.3);
+            --info-text: #fff;
+        }
+        [data-theme="light"] { /* Light Theme */
+            --bg-color: #f0f2f5;
+            --text-color: #333;
+            --panel-bg: #fff;
+            --accent-color: #007bff;
+            --border-color: #0056b3;
+            --shadow-color: rgba(0,123,255,0.2);
+            --info-text: #333;
+        }
 
-        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; transition: 0.5s; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        nav { width: 100%; padding: 15px; display: flex; justify-content: flex-end; box-sizing: border-box; }
-        
-        .main-card { width: 90%; max-width: 550px; background: var(--panel); border-radius: 10px; padding: 30px; box-shadow: 0 0 20px rgba(0,255,0,0.2); text-align: center; border: 1px solid var(--accent); margin-top: 20px; }
-        #clock { font-size: 3rem; font-weight: bold; margin: 10px 0; }
-        .info-row { font-size: 0.9em; margin-bottom: 20px; opacity: 0.8; }
-        
-        #nowPlayingBox { background: rgba(0,255,0,0.05); border: 1px dashed var(--accent); padding: 20px; margin: 20px 0; }
-        #trackTitle { font-size: 1.2em; font-weight: bold; color: #fff; }
+        body {
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Share Tech Mono', monospace; /* Hozzáadva Google Fonts */
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.5s, color 0.5s;
+            overflow-x: hidden;
+            position: relative;
+        }
 
-        .btn { background: var(--accent); color: #000; border: none; padding: 15px 40px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        /* Google Fonts import */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        /* Header / Nav */
+        nav {
+            width: 100%;
+            padding: 15px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.2);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .btn-nav {
+            padding: 8px 15px;
+            cursor: pointer;
+            background: var(--accent-color);
+            color: #000;
+            border: none;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-left: 10px;
+            transition: 0.3s;
+        }
+        .btn-nav:hover { background: var(--text-color); box-shadow: 0 0 10px var(--accent-color); }
+        .theme-toggle {
+            font-size: 1.8em;
+            cursor: pointer;
+            color: var(--info-text);
+            transition: 0.3s;
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
+
+        /* Main Card */
+        .main-card {
+            width: 90%;
+            max-width: 600px;
+            background: var(--panel-bg);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 0 25px var(--shadow-color);
+            text-align: center;
+            border: 2px solid var(--border-color);
+            margin-top: 30px;
+            transition: 0.5s;
+        }
+        h2 { font-size: 1.8em; color: var(--accent-color); margin-bottom: 20px; text-shadow: 0 0 8px rgba(0,255,0,0.5); }
+        p { font-size: 0.9em; opacity: 0.8; }
+
+        /* 3D KOCKA */
+        .cube-container {
+            width: 150px;
+            height: 150px;
+            perspective: 800px;
+            margin: 30px auto;
+        }
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: rotateCube 15s infinite linear;
+        }
+        .face {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border: 2px solid var(--accent-color);
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--info-text);
+            text-shadow: 0 0 5px var(--accent-color);
+            box-shadow: inset 0 0 10px rgba(0,255,0,0.5);
+        }
+        .face-text {
+            transform: translateZ(1px); /* Kis eltolás a láthatóságért */
+        }
+        .front  { transform: rotateY(0deg) translateZ(75px); }
+        .back   { transform: rotateX(180deg) translateZ(75px); }
+        .right  { transform: rotateY(90deg) translateZ(75px); }
+        .left   { transform: rotateY(-90deg) translateZ(75px); }
+        .top    { transform: rotateX(90deg) translateZ(75px); }
+        .bottom { transform: rotateX(-90deg) translateZ(75px); }
+
+        @keyframes rotateCube {
+            0%   { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
+        }
+
+        /* Info Display */
+        #weatherDisplay {
+            font-size: 1em;
+            margin-bottom: 20px;
+            color: var(--info-text);
+            opacity: 0.9;
+        }
+        #nowPlayingBox {
+            background: rgba(0,0,0,0.5);
+            border: 1px dashed var(--border-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        #trackTitle {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-shadow: 0 0 5px rgba(0,255,0,0.7);
+            min-height: 1.5em;
+        }
+
+        /* Buttons */
+        .btn-main {
+            background: var(--accent-color);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            border-radius: 50px;
+            font-size: 1.1em;
+            transition: 0.3s;
+        }
+        .btn-main:hover { background: var(--info-text); box-shadow: 0 0 15px var(--accent-color); }
         .hidden { display: none !important; }
 
-        .playlist { text-align: left; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.5); padding: 10px; margin-top: 15px; }
-        .track-row { padding: 8px; cursor: pointer; border-bottom: 1px solid #333; font-size: 0.85em; }
-        #aiStatus { font-size: 0.8em; color: yellow; font-weight: bold; margin-top: 10px; visibility: hidden; }
+        /* AI Status */
+        #aiStatus {
+            font-size: 0.8em;
+            color: yellow;
+            font-weight: bold;
+            margin-top: 15px;
+            visibility: hidden;
+            transition: 0.3s;
+        }
+
+        /* Admin / Login Forms */
+        input[type="password"] {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background: #222;
+            color: #fff;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1em;
+        }
+        .playlist-admin {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.5);
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+        .track-item-admin {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            text-align: left;
+            font-size: 0.9em;
+            transition: 0.2s;
+        }
+        .track-item-admin:hover { background: var(--accent-color); color: #000; }
     </style>
 </head>
 <body data-theme="dark">
 
     <nav>
-        <span style="cursor:pointer; font-size: 1.5em;" onclick="toggleTheme()">🌓</span>
-        <button onclick="showLogin()" class="btn" style="padding: 5px 10px; margin-left:15px; font-size: 0.7em;">ADMIN</button>
+        <div class="theme-toggle" onclick="toggleTheme()">🌓</div>
+        <button id="loginBtn" class="btn-nav">ADMIN PANEL</button>
     </nav>
 
-    <div id="playerUI" class="main-card">
-        <div id="clock">00:00:00</div>
-        <div class="info-row" id="weatherInfo">Időjárás jelentés betöltése...</div>
-
-        <div id="nowPlayingBox">
-            <span style="font-size: 0.7em; opacity: 0.6;">AKTUÁLIS DAL:</span>
-            <div id="trackTitle">Rendszer kész.</div>
+    <div id="listenerPanel" class="main-card">
+        <h2>THE BEANYX RADIO LIVE</h2>
+        
+        <div class="cube-container">
+            <div class="cube">
+                <div class="face front"><span id="cubeTime">00:00</span></div>
+                <div class="face back"><span id="cubeDate">Jan 01</span></div>
+                <div class="face right"><span id="cubeSecs">00s</span></div>
+                <div class="face left"><span id="cubeWeather">...</span></div>
+                <div class="face top"></div>
+                <div class="face bottom"></div>
+            </div>
         </div>
 
-        <button id="startBtn" class="btn">ADÁS INDÍTÁSA</button>
-        <div id="aiStatus">AZ AI ÉPPEN BESZÉL...</div>
+        <div id="weatherDisplay">Időjárás jelentés betöltése...</div>
+
+        <div id="nowPlayingBox">
+            <span style="font-size: 0.8em; opacity: 0.7; display: block; margin-bottom: 5px;">AKTUÁLIS ADÁS:</span>
+            <div id="trackTitle">Rendszer készenlétben.</div>
+        </div>
+
+        <button id="startBtn" class="btn-main">ADÁS INDÍTÁSA</button>
+        <div id="aiStatus">AZ AI MŰSORVEZETŐ BESZÉL...</div>
     </div>
 
-    <div id="loginUI" class="main-card hidden">
-        <input type="password" id="adminPass" placeholder="Jelszó"><br><br>
-        <button class="btn" onclick="login()">BELÉPÉS</button>
-        <button class="btn" style="background:#444;" onclick="hideLogin()">MÉGSE</button>
+    <div id="loginPanel" class="main-card hidden">
+        <h2>ADMIN BELÉPÉS</h2>
+        <input type="password" id="adminPassword" placeholder="Jelszó">
+        <button class="btn-main" style="margin-top: 15px;" onclick="checkLogin()">BELÉPÉS</button>
+        <button class="btn-main" style="background: #444; margin-left: 10px;" onclick="hideLogin()">MÉGSE</button>
     </div>
 
-    <div id="adminUI" class="main-card hidden">
-        <h3>STÚDIÓ KONTROLL</h3>
-        <div class="playlist" id="fullList"></div>
-        <button class="btn" style="margin-top:20px; background:#aa0000; color:white;" onclick="location.reload()">KILÉPÉS</button>
+    <div id="adminPanel" class="main-card hidden">
+        <h2>STÚDIÓ KONTROLL</h2>
+        <p style="color: var(--info-text);">Kattints egy dalra az azonnali indításhoz:</p>
+        <div class="playlist-admin" id="adminPlaylist"></div>
+        <button class="btn-main" style="margin-top: 20px; background: #c00;" onclick="logout()">KIJELENTKEZÉS</button>
     </div>
 
-    <audio id="mainAudio"></audio>
+    <audio id="playerAudio"></audio>
 
     <script>
+        // --- FIREBASE KONFIGURÁCIÓ ---
         const firebaseConfig = {
             apiKey: "AIzaSyBLZVnNY-HdYw7vpSfF6ewJHLru2l6e9WE",
             databaseURL: "https://thebeanyxradio-default-rtdb.europe-west1.firebasedatabase.app"
@@ -71,6 +271,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // --- RÁDIÓ PLAYLIST ---
         const playlist = [
             "Black Halo Protocol (1).mp3", "Black Halo Protocol (2).mp3",
             "Demon Season (1).mp3", "Demon Season.mp3",
@@ -85,114 +286,180 @@
             "Velvet Afterglow (1).mp3", "Velvet Afterglow.mp3"
         ];
 
-        const audio = document.getElementById('mainAudio');
-        let cities = [
-            {n: "Budapest", lat: 47.49, lon: 19.04, t: 0},
-            {n: "Miskolc", lat: 48.10, lon: 20.78, t: 0},
-            {n: "Szeged", lat: 46.25, lon: 20.14, t: 0},
-            {n: "Pécs", lat: 46.07, lon: 18.23, t: 0}
-        ];
+        const audio = document.getElementById('playerAudio');
+        let aiIsSpeaking = false; // Jelző, ha az AI beszél
+        let isAudioAllowed = false; // Böngésző engedélyezte-e már a hangot
 
-        // --- ÓRA ÉS IDŐZÍTETT BEMONDÁS ---
-        function updateClock() {
+        // --- IDŐJÁRÁS ÉS VÁROSOK ---
+        let cities = [
+            { name: "Budapest", lat: 47.49, lon: 19.04, temp: 0, region: "Közép-Magyarországon" },
+            { name: "Miskolc", lat: 48.10, lon: 20.78, temp: 0, region: "Északon" },
+            { name: "Szeged", lat: 46.25, lon: 20.14, temp: 0, region: "Délen" },
+            { name: "Pécs", lat: 46.07, lon: 18.23, temp: 0, region: "Délnyugaton" },
+            { name: "Debrecen", lat: 47.53, lon: 21.62, temp: 0, region: "Keleten" }
+        ];
+        let currentCityWeather = "Ismeretlen"; // Az épp megjelenített város
+
+        // --- 3D KOCKA & IDŐ ---
+        function updateCube() {
             const now = new Date();
-            document.getElementById('clock').innerText = now.toLocaleTimeString('hu-HU');
+            const time = now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
+            const date = now.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' });
+            const seconds = now.getSeconds();
+
+            document.getElementById('cubeTime').innerText = time;
+            document.getElementById('cubeDate').innerText = date;
+            document.getElementById('cubeSecs').innerText = `${seconds}s`;
+            document.getElementById('cubeWeather').innerText = currentCityWeather; // Aktuális időjárás
             
-            // 11:00-kor (vagy állítsd át 10:52-re teszthez) megszólal az országos jelentés
-            if(now.getHours() === 11 && now.getMinutes() === 00 && now.getSeconds() === 0) {
-                const report = `Figyelem! Országos időjárás jelentés. Északon, Miskolc környékén ${cities[1].t} fokot mérünk. Délen, Szeged térségében ${cities[2].t} fok van, míg a fővárosban ${cities[0].t} fok a hőmérséklet. Köszönjük, hogy minket hallgatnak!`;
+            // AI bemondás 10:52-kor
+            if (now.getHours() === 11 && now.getMinutes() === 10 && now.getSeconds() === 0) {
+                const report = `Figyelem, műsorváltozás! Országos időjárás jelentés. ${cities[1].region}, Miskolc térségében ${cities[1].temp} fokot mérünk. ${cities[2].region}, Szeged környékén ${cities[2].temp} fok van, míg a fővárosban, Budapesten ${cities[0].temp} fok a hőmérséklet. Köszönjük, hogy velünk tartanak!`;
                 speakAI(report);
             }
         }
-        setInterval(updateClock, 1000);
+        setInterval(updateCube, 1000); // Kocka frissítése minden másodpercben
 
-        // --- IDŐJÁRÁS NAGYVÁROSOK SZERINT ---
-        async function fetchAllWeather() {
-            for(let city of cities) {
+        // --- IDŐJÁRÁS FRISSÍTÉS ÉS MEGJELENÍTÉS ---
+        async function fetchWeatherForCities() {
+            let fullReport = [];
+            for (let i = 0; i < cities.length; i++) {
+                const city = cities[i];
                 try {
-                    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`);
-                    const d = await r.json();
-                    city.t = Math.round(d.current_weather.temperature);
-                } catch(e) {}
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`);
+                    const data = await res.json();
+                    city.temp = Math.round(data.current_weather.temperature);
+                    fullReport.push(`${city.name}: ${city.temp}°C`);
+                } catch (e) {
+                    fullReport.push(`${city.name}: N/A`);
+                }
             }
-            document.getElementById('weatherInfo').innerText = `BP: ${cities[0].t}°C | MISKOLC: ${cities[1].t}°C | SZEGED: ${cities[2].t}°C`;
+            document.getElementById('weatherDisplay').innerText = `Időjárás: ${fullReport.join(' | ')}`;
+            // Véletlenszerűen kiválasztunk egy várost a kockára
+            const randomCity = cities[Math.floor(Math.random() * cities.length)];
+            currentCityWeather = `${randomCity.name}: ${randomCity.temp}°C`;
         }
-        fetchAllWeather();
-        setInterval(fetchAllWeather, 600000);
+        fetchWeatherForCities();
+        setInterval(fetchWeatherForCities, 60000); // Percenként frissít
 
-        // --- ALAP AI HANG (MAGYAR) ---
-        function speakAI(text, callback) {
+        // --- BÖNGÉSZŐ ALAP AI HANG (MAGYAR) ---
+        function speakAI(text, callback, isTitle = false) {
+            if (!isAudioAllowed) { // Ha még nem volt kattintás, nem szólal meg
+                console.log("AI beszéd blokkolva: felhasználói interakció szükséges.");
+                if (callback) callback();
+                return;
+            }
+
+            aiIsSpeaking = true;
             document.getElementById('aiStatus').style.visibility = "visible";
-            const oldVol = audio.volume;
-            audio.volume = 0.1;
+            const originalVolume = audio.volume;
+            audio.volume = 0.1; // Zene lehalkítása
 
             const synth = window.speechSynthesis;
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = 'hu-HU';
-            utter.rate = 0.9;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = isTitle ? 'en-US' : 'hu-HU'; // Zene címét angolul
+            utterance.rate = 0.9; // Beszéd sebessége
 
-            utter.onend = () => {
-                audio.volume = oldVol;
+            utterance.onend = () => {
+                audio.volume = originalVolume; // Zene visszahangosítása
                 document.getElementById('aiStatus').style.visibility = "hidden";
-                if(callback) callback();
+                aiIsSpeaking = false;
+                if (callback) callback();
             };
-            synth.speak(utter);
+            synth.speak(utterance);
         }
 
-        // --- RÁDIÓ MAG ---
+        // --- RÁDIÓ LOGIKA ---
         async function syncRadio() {
-            const snap = await db.ref('radioState').get();
-            const data = snap.val();
-            if(!data) return;
+            if (aiIsSpeaking) return; // Ha az AI beszél, ne indítsa a zenét
 
-            const track = playlist[data.currentTrackIndex];
-            const elapsed = (Date.now() - data.playlistStartedAt) / 1000;
+            const snapshot = await db.ref('radioState').get();
+            const data = snapshot.val();
+            if (!data) return;
 
-            audio.src = encodeURIComponent(track);
+            const currentTrack = playlist[data.currentTrackIndex];
+            const elapsedTime = (Date.now() - data.playlistStartedAt) / 1000;
+
+            audio.src = encodeURIComponent(currentTrack);
             audio.onloadedmetadata = () => {
-                if(elapsed < audio.duration) {
-                    audio.currentTime = elapsed;
-                    audio.play().catch(() => { document.getElementById('trackTitle').innerText = "Kattints a gombra!"; });
-                    document.getElementById('trackTitle').innerText = track.replace('.mp3','');
+                if (elapsedTime < audio.duration) {
+                    audio.currentTime = elapsedTime;
+                    if (isAudioAllowed) { // Csak akkor próbáljuk lejátszani, ha engedélyezett
+                        audio.play().catch(e => console.error("Lejátszási hiba:", e));
+                    }
+                    document.getElementById('trackTitle').innerText = currentTrack.replace('.mp3', '');
                 } else {
-                    autoNext();
+                    autoNextTrack();
                 }
             };
         }
 
-        function autoNext() {
+        // Automatikus léptetés a következő dalra
+        function autoNextTrack() {
             db.ref('radioState/currentTrackIndex').get().then(s => {
-                let next = (s.val() + 1) % playlist.length;
-                let trackName = playlist[next].replace('.mp3', '');
+                let nextIndex = (s.val() + 1) % playlist.length;
+                let nextTrackName = playlist[nextIndex].replace('.mp3', '');
                 
-                // Bemondás magyarul, a zene címe marad eredeti (angol)
-                speakAI(`Most pedig következzen a Beanyx rádión: ${trackName}`, () => {
-                    db.ref('radioState').set({ currentTrackIndex: next, playlistStartedAt: Date.now() });
-                });
+                speakAI(`Most pedig következzen a Beanyx rádión: ${nextTrackName}`, () => {
+                    db.ref('radioState').set({ currentTrackIndex: nextIndex, playlistStartedAt: Date.now() });
+                }, true); // A zene címét angolul mondja
             });
         }
 
-        db.ref('radioState').on('value', syncRadio);
-        document.getElementById('startBtn').onclick = function() { this.classList.add('hidden'); syncRadio(); };
+        // --- ESEMÉNYKEZELŐK ---
+        // Első kattintás a lejátszáshoz és az audio engedélyezéséhez
+        document.getElementById('startBtn').onclick = function() {
+            audio.play().then(() => {
+                isAudioAllowed = true;
+                this.classList.add('hidden');
+                syncRadio(); // Indítjuk a szinkronizációt
+            }).catch(e => {
+                console.error("Autoplay blocked:", e);
+                document.getElementById('trackTitle').innerText = "Kattints a gombra a lejátszáshoz!";
+            });
+        };
 
-        // Admin lista
-        const alist = document.getElementById('fullList');
-        playlist.forEach((t, i) => {
-            let r = document.createElement('div');
-            r.className = 'track-row';
-            r.innerText = t;
-            r.onclick = () => {
-                speakAI(`Műsorváltozás. Következik: ${t.replace('.mp3','')}`, () => {
-                    db.ref('radioState').set({ currentTrackIndex: i, playlistStartedAt: Date.now() });
-                });
+        db.ref('radioState').on('value', syncRadio); // Figyeli a Firebase változásait
+
+        // Dal vége esemény
+        audio.onended = autoNextTrack;
+
+        // Admin lista generálása
+        const adminList = document.getElementById('adminPlaylist');
+        playlist.forEach((trackName, index) => {
+            let div = document.createElement('div');
+            div.className = 'track-item-admin';
+            div.innerText = trackName;
+            div.onclick = () => {
+                speakAI(`Műsorváltozás. Most következzen: ${trackName.replace('.mp3','')}`, () => {
+                    db.ref('radioState').set({ currentTrackIndex: index, playlistStartedAt: Date.now() });
+                }, true); // A címet angolul mondja
             };
-            alist.appendChild(r);
+            adminList.appendChild(div);
         });
 
-        function showLogin() { document.getElementById('playerUI').classList.add('hidden'); document.getElementById('loginUI').classList.remove('hidden'); }
-        function hideLogin() { document.getElementById('loginUI').classList.add('hidden'); document.getElementById('playerUI').classList.remove('hidden'); }
-        function login() { if(document.getElementById('adminPass').value === "beanyx123") { document.getElementById('loginUI').classList.add('hidden'); document.getElementById('adminUI').classList.remove('hidden'); } else { alert("Helytelen jelszó"); } }
-        function toggleTheme() { const b = document.body; b.setAttribute('data-theme', b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+        // --- ADMIN / UI VÁLTÁS ---
+        function toggleTheme() {
+            const body = document.body;
+            body.setAttribute('data-theme', body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        }
+        function showLogin() {
+            document.getElementById('listenerPanel').classList.add('hidden');
+            document.getElementById('loginPanel').classList.remove('hidden');
+        }
+        function hideLogin() {
+            document.getElementById('loginPanel').classList.add('hidden');
+            document.getElementById('listenerPanel').classList.remove('hidden');
+        }
+        function checkLogin() {
+            if (document.getElementById('adminPassword').value === "beanyx123") {
+                document.getElementById('loginPanel').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+            } else {
+                alert("Helytelen jelszó!");
+            }
+        }
+        function logout() { location.reload(); } // Kijelentkezéskor újra tölti az oldalt
     </script>
 </body>
 </html>
