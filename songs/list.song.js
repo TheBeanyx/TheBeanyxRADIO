@@ -39,6 +39,3 @@ const songList = [
     "Velvet Afterglow.mp3",
     "Üsd A Ritmust (2).mp3"
 ];
-
-// Kiíratás a konzolra ellenőrzésképpen
-console.log("Betöltött dalok száma: " + songList.length);
