@@ -1,1 +1,44 @@
-//Here comes the list of all the song
+// Zenefájlok listája
+const songList = [
+    "Aszfalttrón (2).mp3",
+    "Black Halo Protocol (1).mp3",
+    "Black Halo Protocol (2).mp3",
+    "Csúcsra Járok (1).mp3",
+    "Demon Season (1).mp3",
+    "Demon Season.mp3",
+    "Dust On The Sunday Sun (1).mp3",
+    "Dust On The Sunday Sun.mp3",
+    "Fractured Tongues, Broken Amps (1).mp3",
+    "Fractured Tongues, Broken Amps.mp3",
+    "Fénysebesség Szerelem (1).mp3",
+    "Gelato Dugómentes (1).mp3",
+    "Golden Afternoon Switch (1).mp3",
+    "Golden Afternoon Switch.mp3",
+    "Halfway To The Horizon (1).mp3",
+    "Halfway To The Horizon.mp3",
+    "Kiállok Érted (1).mp3",
+    "Kártyák Az Asztalon (1).mp3",
+    "Közös Emlékezés.mp3",
+    "La Dolce Vita (1).mp3",
+    "La Dolce Vita.mp3",
+    "Maradj Még Egy Percet (1).mp3",
+    "Maradnék Benned (1).mp3",
+    "Neonfényes Álmok (1).mp3",
+    "Nyári Fényben Táncolunk (1).mp3",
+    "Rise Like Thunder (1).mp3",
+    "Rise Like Thunder.mp3",
+    "Run The Gauntlet (1).mp3",
+    "Run The Gauntlet.mp3",
+    "Régi Fűzfa Árnyékában (1).mp3",
+    "Side of the Sun (1).mp3",
+    "Side of the Sun.mp3",
+    "Sun On My Sneakers (1).mp3",
+    "Sun On My Sneakers.mp3",
+    "Sötétből jövök.mp3",
+    "Velvet Afterglow (1).mp3",
+    "Velvet Afterglow.mp3",
+    "Üsd A Ritmust (2).mp3"
+];
+
+// Kiíratás a konzolra ellenőrzésképpen
+console.log("Betöltött dalok száma: " + songList.length);
