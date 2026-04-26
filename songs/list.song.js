@@ -1,5 +1,5 @@
 const playlist = [
-    "songs/Aszfalttrón (2).mp3",
+    "Aszfalttrón (2).mp3",
     "songs/Black Halo Protocol (1).mp3",
     "songs/Black Halo Protocol (2).mp3",
     "songs/Csúcsra Járok (1).mp3",
