@@ -1,4 +1,4 @@
-const songList = [
+const playlist = [
     "songs/Aszfalttrón (2).mp3",
     "songs/Black Halo Protocol (1).mp3",
     "songs/Black Halo Protocol (2).mp3",
