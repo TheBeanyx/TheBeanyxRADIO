@@ -8,6 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     
+    <script src="songs/list.songs.js"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
     
     <style>
@@ -182,14 +184,7 @@
         }
 
         // --- Eredeti logika folytatása ---
-        const playlist = [
-            "Black Halo Protocol (1).mp3", "Black Halo Protocol (2).mp3", "Demon Season (1).mp3", "Demon Season.mp3",
-            "Dust On The Sunday Sun (1).mp3", "Dust On The Sunday Sun.mp3", "Fractured Tongues, Broken Amps (1).mp3",
-            "Fractured Tongues, Broken Amps.mp3", "Golden Afternoon Switch (1).mp3", "Golden Afternoon Switch.mp3",
-            "Halfway To The Horizon (1).mp3", "Halfway To The Horizon.mp3", "Rise Like Thunder (1).mp3",
-            "Rise Like Thunder.mp3", "Run The Gauntlet (1).mp3", "Run The Gauntlet.mp3", "Side of the Sun (1).mp3",
-            "Side of the Sun.mp3", "Sun On My Sneakers (1).mp3", "Sun On My Sneakers.mp3", "Velvet Afterglow (1).mp3", "Velvet Afterglow.mp3"
-        ];
+        // A playlist változót mostantól a songs/list.songs.js definiálja
 
         const audio = document.getElementById('player');
         let cities = {
