@@ -3,42 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TheBeanyxRADIO - Teszt Üzemmód</title>
+    <title>TheBeanyxRADIO - Élőadás</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron&family=Rajdhani:wght@500&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { background: #050505; color: white; font-family: 'Rajdhani', sans-serif; text-align: center; padding: 50px; }
-        .card { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 20px; border: 1px solid #00f2ff; }
-        .btn { background: #00f2ff; color: black; border: none; padding: 15px 30px; border-radius: 50px; cursor: pointer; font-family: 'Orbitron'; font-weight: bold; }
-        #debug { margin-top: 20px; font-size: 0.8rem; color: #aaa; border-top: 1px solid #333; padding-top: 10px; }
-        .error { color: #ff4444; }
+        :root {
+            --primary: #00f2ff; --secondary: #7000ff; --bg: #050505; --panel: rgba(255, 255, 255, 0.05); --text: #fff;
+        }
+        [data-theme="light"] {
+            --primary: #007bff; --secondary: #6610f2; --bg: #f8f9fa; --panel: rgba(0, 0, 0, 0.05); --text: #212529;
+        }
+
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Rajdhani', sans-serif; overflow-x: hidden;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+            transition: 0.5s;
+        }
+
+        nav { width: 100%; padding: 20px; display: flex; justify-content: flex-end; gap: 15px; z-index: 100; box-sizing: border-box; }
+        .glass-card {
+            background: var(--panel); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px;
+            padding: 40px; width: 90%; max-width: 850px; text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3); margin-bottom: 50px;
+        }
+
+        .time-display { font-family: 'Orbitron', sans-serif; font-size: 4rem; font-weight: 700; margin: 10px 0; text-shadow: 0 0 15px var(--primary); }
+        
+        .weather-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 25px 0; }
+        .w-card { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; border-bottom: 3px solid var(--primary); }
+        .w-card i { display: block; font-size: 0.7rem; opacity: 0.6; text-transform: uppercase; }
+        .w-card b { font-size: 1.2rem; color: var(--primary); display: block; }
+        .w-card span { font-size: 0.8rem; }
+
+        .btn {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none; color: white; padding: 12px 30px; border-radius: 50px;
+            font-family: 'Orbitron', sans-serif; cursor: pointer; transition: 0.3s;
+        }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px var(--primary); }
+        
+        .btn-google { background: #db4437; margin-top: 10px; }
+        .btn-logout { background: #444; }
+
+        input, textarea {
+            background: rgba(0,0,0,0.2); border: 1px solid var(--primary);
+            color: white; padding: 10px; border-radius: 10px; width: 100%; box-sizing: border-box; margin: 10px 0;
+        }
+
+        .admin-scroll { max-height: 300px; overflow-y: auto; text-align: left; margin: 20px 0; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .track-item { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+        .track-item:hover { background: var(--primary); color: #000; }
+
+        .hidden { display: none !important; }
+        #aiStatus { color: #f2ff00; height: 20px; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
-<body>
+<body data-theme="dark">
 
-    <div class="card">
-        <h1 style="font-family: 'Orbitron'; color: #00f2ff;">TheBeanyxRADIO</h1>
-        <div id="status">Állapot: Betöltés...</div>
-        <h2 id="nowPlaying">Várakozás a szerverre...</h2>
-        <br>
-        <button id="startBtn" class="btn">ADÁS HALLGATÁSA</button>
+    <nav>
+        <button class="btn" onclick="toggleTheme()">🌓 TÉMA</button>
+        <button class="btn" id="adminBtn" onclick="showLogin()">🔐 ADMIN</button>
+        <button class="btn btn-logout hidden" id="logoutBtn" onclick="handleLogout()">KILÉPÉS</button>
+    </nav>
+
+    <div class="glass-card" id="mainUI">
+        <h1 style="font-family: 'Orbitron'; letter-spacing: 4px;">TheBeanyxRADIO - Élőadás</h1>
+        <div id="aiStatus"></div>
+        <div class="time-display" id="clock">00:00:00</div>
         
-        <div id="debug">
-            <div>Firebase: <span id="f-status">Vár...</span></div>
-            <div>Aktuális fájl: <span id="f-file">-</span></div>
+        <div class="weather-grid" id="weatherGrid">
+            <div class="w-card"><i>Budapest</i>🌡️<b id="t-bp">21°C</b></div>
+            <div class="w-card"><i>Miskolc</i>🌡️<b id="t-miskolc">18°C</b></div>
+            <div class="w-card"><i>Szeged</i>🌡️<b id="t-szeged">23°C</b></div>
+            <div class="w-card"><i>Debrecen</i>🌡️<b id="t-debrecen">20°C</b></div>
+            <div class="w-card"><i>Pécs</i>🌡️<b id="t-pecs">22°C</b></div>
+        </div>
+
+        <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 20px; border-left: 5px solid var(--secondary);">
+            <i style="font-size: 0.8rem; opacity: 0.5;">Éppen szól:</i>
+            <div id="trackTitle" style="font-size: 1.4rem; font-weight: bold;">KÉSZEN ÁLL</div>
+        </div>
+        <br>
+        <button id="startBtn" class="btn" style="padding: 20px 60px; font-size: 1.2rem;">Adás hallgatása</button>
+    </div>
+
+    <div id="loginUI" class="glass-card hidden">
+        <h2>Adminisztrátori Belépés</h2>
+        <input type="email" id="email" placeholder="Email cím">
+        <input type="password" id="pass" placeholder="Jelszó">
+        <button class="btn" style="width: 100%;" onclick="loginWithEmail()">BELÉPÉS</button>
+        <br><br>
+        <button class="btn" style="background:#444; width: 100%;" onclick="hideAll()">VISSZA</button>
+    </div>
+
+    <div id="adminUI" class="glass-card hidden">
+        <h2>BROADCAST CONSOLE</h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+                <h3>Lejátszási lista</h3>
+                <div class="admin-scroll" id="adminPlaylist"></div>
+            </div>
+            <div>
+                <h3>Rendszer üzenet</h3>
+                <p>Kattints a listában egy zenére az indításhoz!</p>
+            </div>
         </div>
     </div>
 
     <audio id="player"></audio>
 
     <script>
-        // --- KONFIGURÁCIÓ ---
         const playlist = [
-            "songs/Aszfalttrón (2).mp3", "songs/Black Halo Protocol (1).mp3", "songs/Black Halo Protocol (2).mp3",
-            "songs/Csúcsra Járok (1).mp3", "songs/Demon Season (1).mp3", "songs/Demon Season.mp3"
-        ]; // Csak az első párat tettem ide tesztnek, bővítsd majd!
+            "songs/Aszfalttrón (2).mp3",
+            "songs/Black Halo Protocol (1).mp3",
+            "songs/Black Halo Protocol (2).mp3",
+            "songs/Csúcsra Járok (1).mp3",
+            "songs/Demon Season (1).mp3",
+            "songs/Demon Season.mp3",
+            "songs/Dust On The Sunday Sun (1).mp3",
+            "songs/Dust On The Sunday Sun.mp3",
+            "songs/Fractured Tongues, Broken Amps (1).mp3",
+            "songs/Fractured Tongues, Broken Amps.mp3",
+            "songs/Fénysebesség Szerelem (1).mp3",
+            "songs/Gelato Dugómentes (1).mp3",
+            "songs/Golden Afternoon Switch (1).mp3",
+            "songs/Golden Afternoon Switch.mp3",
+            "songs/Halfway To The Horizon (1).mp3",
+            "songs/Halfway To The Horizon.mp3",
+            "songs/Kiállok Érted (1).mp3",
+            "songs/Kártyák Az Asztalon (1).mp3",
+            "songs/Közös Emlékezés.mp3",
+            "songs/La Dolce Vita (1).mp3",
+            "songs/La Dolce Vita.mp3",
+            "songs/Maradj Még Egy Percet (1).mp3",
+            "songs/Maradnék Benned (1).mp3",
+            "songs/Neonfényes Álmok (1).mp3",
+            "songs/Nyári Fényben Táncolunk (1).mp3",
+            "songs/Rise Like Thunder (1).mp3",
+            "songs/Rise Like Thunder.mp3",
+            "songs/Run The Gauntlet (1).mp3",
+            "songs/Run The Gauntlet.mp3",
+            "songs/Régi Fűzfa Árnyékában (1).mp3",
+            "songs/Side of the Sun (1).mp3",
+            "songs/Side of the Sun.mp3",
+            "songs/Sun On My Sneakers (1).mp3",
+            "songs/Sun On My Sneakers.mp3",
+            "songs/Sötétből jövök.mp3",
+            "songs/Velvet Afterglow (1).mp3",
+            "songs/Velvet Afterglow.mp3",
+            "songs/Üsd A Ritmust (2).mp3"
+        ];
 
         const firebaseConfig = { 
             apiKey: "AIzaSyBLZVnNY-HdYw7vpSfF6ewJHLru2l6e9WE", 
@@ -47,54 +167,79 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const auth = firebase.auth();
+
         const audio = document.getElementById('player');
         let isLive = false;
 
-        function log(msg, isError = false) {
-            const s = document.getElementById('f-status');
-            s.innerText = msg;
-            if(isError) s.className = 'error';
-        }
-
-        // --- SZINKRONIZÁCIÓ ---
-        db.ref('radioState').on('value', (snap) => {
-            const data = snap.val();
-            if(!data) {
-                log("Hiba: Nincs adat az adatbázisban! (Adminnak el kell indítania)", true);
-                return;
-            }
-            log("Szerver kapcsolat OK");
-
-            const trackPath = playlist[data.currentTrackIndex];
-            if(!trackPath) return;
-
-            const elapsed = (Date.now() - data.playlistStartedAt) / 1000;
-            document.getElementById('f-file').innerText = trackPath;
-            
-            // Ha még nem játszunk, vagy új dal jött
-            if (isLive && (audio.paused || !audio.src.includes(encodeURIComponent(trackPath.split('/').pop())))) {
-                audio.src = trackPath;
-                audio.load();
-                audio.onloadedmetadata = () => {
-                    if(elapsed < audio.duration) {
-                        audio.currentTime = elapsed;
-                        audio.play().catch(e => log("Lejátszási hiba: " + e.message, true));
-                        document.getElementById('nowPlaying').innerText = trackPath.replace('songs/', '').replace('.mp3', '').toUpperCase();
-                    }
+        window.onload = () => {
+            const plist = document.getElementById('adminPlaylist');
+            playlist.forEach((t, i) => {
+                const d = document.createElement('div'); 
+                d.className = 'track-item'; 
+                d.innerText = t.replace('songs/', '');
+                d.onclick = () => { 
+                    if(auth.currentUser) db.ref('radioState').set({ currentTrackIndex: i, playlistStartedAt: Date.now() }); 
                 };
-            }
-        });
-
-        document.getElementById('startBtn').onclick = () => {
-            isLive = true;
-            document.getElementById('startBtn').innerText = "ONLINE";
-            document.getElementById('startBtn').style.background = "#7000ff";
-            document.getElementById('status').innerText = "Állapot: Kapcsolódva";
-            // Kényszerített frissítés gombnyomáskor
-            db.ref('radioState').get().then(snap => {
-                if(!snap.exists()) log("Az adatbázis üres! Jelentkezz be Adminnak és válassz egy dalt!", true);
+                plist.appendChild(d);
             });
         };
+
+        async function sync() {
+            if (!isLive) return;
+            const snap = await db.ref('radioState').get();
+            const data = snap.val();
+            if(!data) return;
+
+            const rawPath = playlist[data.currentTrackIndex];
+            const parts = rawPath.split('/');
+            const safeUrl = parts[0] + "/" + encodeURIComponent(parts[1]);
+
+            // Ellenőrizzük, hogy tényleg másikat kell-e játszani
+            if (!audio.src.includes(encodeURIComponent(parts[1]))) {
+                audio.src = safeUrl;
+                audio.load();
+            }
+
+            audio.onloadedmetadata = () => {
+                const elapsed = (Date.now() - data.playlistStartedAt) / 1000;
+                if(elapsed < audio.duration) { 
+                    audio.currentTime = elapsed; 
+                    audio.play().catch(e => console.log("Lejátszás várakozik...")); 
+                    document.getElementById('trackTitle').innerText = parts[1].replace('.mp3','').toUpperCase(); 
+                } else if(auth.currentUser) {
+                    db.ref('radioState').set({ 
+                        currentTrackIndex: (data.currentTrackIndex + 1) % playlist.length, 
+                        playlistStartedAt: Date.now() 
+                    }); 
+                }
+            };
+        }
+
+        db.ref('radioState').on('value', sync);
+        document.getElementById('startBtn').onclick = () => { 
+            isLive = true; 
+            document.getElementById('startBtn').classList.add('hidden'); 
+            sync(); 
+        };
+
+        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('hu-HU'); }, 1000);
+        function toggleTheme() { const b = document.body; b.setAttribute('data-theme', b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+        function showLogin() { document.getElementById('mainUI').classList.add('hidden'); document.getElementById('loginUI').classList.remove('hidden'); }
+        function hideAll() { document.getElementById('loginUI').classList.add('hidden'); document.getElementById('adminUI').classList.add('hidden'); document.getElementById('mainUI').classList.remove('hidden'); }
+        function loginWithEmail() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('pass').value).then(() => { document.getElementById('loginUI').classList.add('hidden'); document.getElementById('adminUI').classList.remove('hidden'); }).catch(err => alert(err.message)); }
+        function handleLogout() { auth.signOut(); }
+        
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('adminBtn').classList.add('hidden');
+                document.getElementById('logoutBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('adminBtn').classList.remove('hidden');
+                document.getElementById('logoutBtn').classList.add('hidden');
+                hideAll();
+            }
+        });
     </script>
 </body>
 </html>
