@@ -132,7 +132,6 @@
         const db = firebase.database();
         const auth = firebase.auth();
 
-        // Auth figyelő
         auth.onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('adminBtn').classList.add('hidden');
@@ -182,9 +181,6 @@
             document.getElementById('adminUI').classList.add('hidden');
             document.getElementById('mainUI').classList.remove('hidden');
         }
-
-        // --- Eredeti logika folytatása ---
-        // A playlist változót mostantól a songs/list.songs.js definiálja
 
         const audio = document.getElementById('player');
         let cities = {
@@ -247,12 +243,34 @@
             const snap = await db.ref('radioState').get();
             const data = snap.val();
             if(!data) return;
-            const track = playlist[data.currentTrackIndex];
+
+            // Útvonal javítás: Biztosítjuk, hogy a fájl az index.html-hez képest elérhető
+            let track = playlist[data.currentTrackIndex];
+            if (!track.startsWith('songs/')) track = 'songs/' + track;
+            
             const elapsed = (Date.now() - data.playlistStartedAt) / 1000;
-            audio.src = encodeURIComponent(track);
+            
+            // Csak akkor váltunk forrást, ha tényleg változott a dal
+            const currentSrc = audio.src.split('/').pop();
+            const newSrc = track.split('/').pop();
+
+            if (decodeURIComponent(currentSrc) !== newSrc) {
+                audio.src = track;
+                audio.load();
+            }
+
             audio.onloadedmetadata = () => {
-                if(elapsed < audio.duration) { audio.currentTime = elapsed; audio.play(); document.getElementById('trackTitle').innerText = track.replace('.mp3','').toUpperCase(); }
-                else { if(auth.currentUser) db.ref('radioState').set({ currentTrackIndex: (data.currentTrackIndex + 1) % playlist.length, playlistStartedAt: Date.now() }); }
+                if(elapsed < audio.duration) { 
+                    audio.currentTime = elapsed; 
+                    audio.play().catch(e => console.log("Lejátszási hiba:", e)); 
+                    document.getElementById('trackTitle').innerText = track.split('/').pop().replace('.mp3','').toUpperCase(); 
+                }
+                else { 
+                    if(auth.currentUser) db.ref('radioState').set({ 
+                        currentTrackIndex: (data.currentTrackIndex + 1) % playlist.length, 
+                        playlistStartedAt: Date.now() 
+                    }); 
+                }
             };
         }
 
@@ -263,7 +281,9 @@
 
         const plist = document.getElementById('adminPlaylist');
         playlist.forEach((t, i) => {
-            const d = document.createElement('div'); d.className = 'track-item'; d.innerText = t;
+            const d = document.createElement('div'); 
+            d.className = 'track-item'; 
+            d.innerText = t.split('/').pop();
             d.onclick = () => { if(auth.currentUser) db.ref('radioState').set({ currentTrackIndex: i, playlistStartedAt: Date.now() }); };
             plist.appendChild(d);
         });
